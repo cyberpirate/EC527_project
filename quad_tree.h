@@ -12,16 +12,12 @@
 #define CT_LEAVES 1
 #define CT_NODES  2
 
-#define QUADRANT_TR 0
-#define QUADRANT_TL 1
-#define QUADRANT_BL 2
-#define QUADRANT_BR 3
-
-#define NODE_CHILDREN_NUM 4
+#define NODE_CHILDREN_NUM 8
 
 struct Pos {
     coord_t x;
     coord_t y;
+    coord_t z;
 };
 
 struct Leaf {
@@ -43,7 +39,7 @@ struct Node {
  * @param pos
  * @return
  */
-uint8_t get_quadrant(const struct Pos* center, const struct Pos* pos);
+uint8_t get_pos_index(const struct Pos* center, const struct Pos* pos);
 
 /**
  * Create an empty node

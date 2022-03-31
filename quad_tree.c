@@ -7,17 +7,19 @@
 #include <memory.h>
 #include "quad_tree.h"
 
-uint8_t get_quadrant(const struct Pos* center, const struct Pos* pos) {
-    if(center->x <= pos->x && center->y <= pos->y) {
-        return QUADRANT_TR;
-    } else if(center->x > pos->x && center->y <= pos->y) {
-        return QUADRANT_TL;
-    } else if(center->x <= pos->x && center->y > pos->y) {
-        return QUADRANT_BR;
-    } else if(center->x > pos->x && center->y > pos->y) {
-        return QUADRANT_BL;
-    }
-    assert(0);
+uint8_t get_pos_index(const struct Pos* center, const struct Pos* pos) {
+
+    uint8_t ret = 0;
+
+    if(center->x <= pos->x) ret += 1;
+    ret = ret << 1;
+
+    if(center->y <= pos->y) ret += 1;
+    ret = ret << 1;
+
+    if(center->z <= pos->z) ret += 1;
+
+    return ret;
 }
 
 struct Node* create_node() {
@@ -106,7 +108,7 @@ void add_leaf(struct Node* node, struct Leaf* leaf) {
 
     if(node->contentType == CT_NODES) {
         add_leaf(
-            node->nodes[get_quadrant(&node->center, &leaf->pos)],
+            node->nodes[get_pos_index(&node->center, &leaf->pos)],
             leaf
         );
     }
@@ -142,7 +144,7 @@ void remove_leaf(struct Node* node, struct Leaf* leaf) {
     }
 
     if(node->contentType == CT_NODES) {
-        remove_leaf(node->nodes[get_quadrant(&node->center, &leaf->pos)], leaf);
+        remove_leaf(node->nodes[get_pos_index(&node->center, &leaf->pos)], leaf);
 
         int i = 0;
         for(; i < NODE_CHILDREN_NUM; i++) {
