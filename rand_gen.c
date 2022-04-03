@@ -22,5 +22,6 @@ struct Pos rand_pos() {
     struct Pos ret;
     ret.x = rand_coord();
     ret.y = rand_coord();
+    ret.z = rand_coord();
     return ret;
 }

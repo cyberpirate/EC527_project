@@ -54,7 +54,7 @@ TEST quad_tree_remove(void) {
 
     struct Node* root = create_node();
 
-    int leafNum = 10;
+    int leafNum = (int) (NODE_CHILDREN_NUM * 1.5);
     struct Leaf* leaves[leafNum];
 
     for(int i = 0; i < leafNum; i++) {
@@ -65,6 +65,7 @@ TEST quad_tree_remove(void) {
 
     for(int i = 0; i < leafNum; i++) {
         remove_leaf(root, leaves[i]);
+        destroy_leaf(leaves[i]);
     }
 
     ASSERT_EQ(0, node_size(root));

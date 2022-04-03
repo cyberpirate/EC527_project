@@ -54,14 +54,17 @@ void explode_node(struct Node* node) {
 
     node->center.x = 0;
     node->center.y = 0;
+    node->center.z = 0;
 
     for(int i = 0; i < NODE_CHILDREN_NUM; i++) {
         node->center.x += node->leaves[i]->pos.x;
         node->center.y += node->leaves[i]->pos.y;
+        node->center.z += node->leaves[i]->pos.z;
     }
 
     node->center.x /= NODE_CHILDREN_NUM;
     node->center.y /= NODE_CHILDREN_NUM;
+    node->center.z /= NODE_CHILDREN_NUM;
 
     node->contentType = CT_NODES;
 
