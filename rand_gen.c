@@ -3,7 +3,7 @@
 //
 
 #include "rand_gen.h"
-#include "quad_tree.h"
+#include "oct_tree.h"
 #include <stdlib.h>
 
 void reset_rand() {

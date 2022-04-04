@@ -2,10 +2,10 @@
 clean:
 	-rm main test
 
-main: main.c quad_tree.c rand_gen.c
-	gcc main.c quad_tree.c rand_gen.c -o main
+main: main.c oct_tree.c rand_gen.c linked_stack.c
+	gcc main.c oct_tree.c rand_gen.c linked_stack.c -o main
 
-test: test.c quad_tree.c rand_gen.c
-	gcc -ggdb test.c quad_tree.c rand_gen.c -o test
+test: test.c oct_tree.c rand_gen.c linked_stack.c
+	gcc -D DEBUG -ggdb test.c oct_tree.c rand_gen.c linked_stack.c -o test
 
 all: main test

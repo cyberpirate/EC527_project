@@ -3,11 +3,11 @@
 //
 
 #include <malloc.h>
-#include <assert.h>
 #include <memory.h>
-#include "quad_tree.h"
+#include "oct_tree.h"
+#include "linked_stack.h"
 
-uint8_t get_pos_index(const struct Pos* center, const struct Pos* pos) {
+uint8_t get_pos_index(const struct Pos* center, struct Pos* pos) {
 
     uint8_t ret = 0;
 
@@ -22,35 +22,24 @@ uint8_t get_pos_index(const struct Pos* center, const struct Pos* pos) {
     return ret;
 }
 
-struct Node* create_node() {
-    struct Node* ret = (struct Node*) malloc(sizeof(struct Node));
-    memset(ret, 0, sizeof(struct Node));
+struct OctNode* create_oct_node() {
+    struct OctNode* ret = (struct OctNode*) malloc(sizeof(struct OctNode));
+    memset(ret, 0, sizeof(struct OctNode));
     return ret;
 }
 
-void destroy_node(struct Node* node) {
-
-    if(node->contentType == CT_LEAVES) {
-        for(int i = 0; i < NODE_CHILDREN_NUM; i++) {
-            destroy_leaf(node->leaves[i]);
-        }
-    }
-
-    if(node->contentType == CT_NODES) {
-        for(int i = 0; i < NODE_CHILDREN_NUM; i++) {
-            destroy_node(node->nodes[i]);
-        }
-    }
+void destroy_oct_node(struct OctNode* node) {
+    dbgAssert(node->contentType == CT_EMPTY);
 
     free(node);
 }
 
-void explode_node(struct Node* node) {
+void explode_node(struct OctNode* node) {
 
-    assert(node->contentType == CT_LEAVES);
+    dbgAssert(node->contentType == CT_LEAVES);
 
     for(int i = 0; i < NODE_CHILDREN_NUM; i++)
-        assert(node->leaves[i]);
+        dbgAssert(node->leaves[i]);
 
     node->center.x = 0;
     node->center.y = 0;
@@ -74,7 +63,7 @@ void explode_node(struct Node* node) {
 
 
     for(int i = 0; i < NODE_CHILDREN_NUM; i++)
-        node->nodes[i] = create_node();
+        node->nodes[i] = create_oct_node();
 
     for(int i = 0; i < NODE_CHILDREN_NUM; i++)
         add_leaf(node, leaves[i]);
@@ -90,7 +79,7 @@ void destroy_leaf(struct Leaf* leaf) {
     free(leaf);
 }
 
-void add_leaf(struct Node* node, struct Leaf* leaf) {
+void add_leaf(struct OctNode* node, struct Leaf* leaf) {
     if(node->contentType == CT_EMPTY) {
         node->contentType = CT_LEAVES;
     }
@@ -98,7 +87,7 @@ void add_leaf(struct Node* node, struct Leaf* leaf) {
     if(node->contentType == CT_LEAVES) {
         int i = 0;
         for(; i < NODE_CHILDREN_NUM; i++) {
-            if(node->leaves[i] == 0) {
+            if(node->leaves[i] == nullptr) {
                 node->leaves[i] = leaf;
                 break;
             }
@@ -117,31 +106,31 @@ void add_leaf(struct Node* node, struct Leaf* leaf) {
     }
 }
 
-void remove_leaf(struct Node* node, struct Leaf* leaf) {
-    assert(node->contentType != CT_EMPTY);
+void remove_leaf(struct OctNode* node, struct Leaf* leaf) {
+    dbgAssert(node->contentType != CT_EMPTY);
 
     if(node->contentType == CT_LEAVES) {
 
         int i = 0;
         for(; i < NODE_CHILDREN_NUM; i++) {
             if(node->leaves[i] == leaf) {
-                node->leaves[i] = 0;
+                node->leaves[i] = nullptr;
                 break;
             }
         }
 
         if(i == NODE_CHILDREN_NUM) {
-            assert(0);
+            dbgAssert(0);
         }
 
         for(i = 0; i < NODE_CHILDREN_NUM-1; i++) {
-            if(node->leaves[i] == 0) {
+            if(node->leaves[i] == nullptr) {
                 node->leaves[i] = node->leaves[i+1];
-                node->leaves[i+1] = 0;
+                node->leaves[i+1] = nullptr;
             }
         }
 
-        if(node->leaves[0] == 0) {
+        if(node->leaves[0] == nullptr) {
             node->contentType = CT_EMPTY;
         }
     }
@@ -157,15 +146,16 @@ void remove_leaf(struct Node* node, struct Leaf* leaf) {
         }
 
         if(i == NODE_CHILDREN_NUM) {
-            for(; i < NODE_CHILDREN_NUM; i++) {
-                destroy_node(node->nodes[i]);
+            for(i = 0; i < NODE_CHILDREN_NUM; i++) {
+                destroy_oct_node(node->nodes[i]);
+                node->nodes[i] = nullptr;
             }
             node->contentType = CT_EMPTY;
         }
     }
 }
 
-int node_size(struct Node* node) {
+int node_size(struct OctNode* node) {
     if(node->contentType == CT_EMPTY) {
         return 0;
     }
@@ -173,7 +163,7 @@ int node_size(struct Node* node) {
     if(node->contentType == CT_LEAVES) {
         int i = 0;
         for(; i < NODE_CHILDREN_NUM; i++)
-            if(node->leaves[i] == 0)
+            if(node->leaves[i] == nullptr)
                 break;
         return i;
     }
@@ -186,6 +176,66 @@ int node_size(struct Node* node) {
         return c;
     }
 
-    assert(0);
+    dbgAssert(0);
 }
 
+void drain_tree(struct OctNode* node, struct LinkedStackRoot* ls) {
+
+    if(node->contentType == CT_EMPTY) return;
+
+    if(node->contentType == CT_LEAVES) {
+        for(int i = 0; i < NODE_CHILDREN_NUM; i++) {
+            if(node->leaves[i] != nullptr) {
+                add_node(ls, node->leaves[i]);
+                node->leaves[i] = nullptr;
+            }
+        }
+        node->contentType = CT_EMPTY;
+    }
+
+    if(node->contentType == CT_NODES) {
+        for(int i = 0; i < NODE_CHILDREN_NUM; i++) {
+            drain_tree(node->nodes[i], ls);
+            destroy_oct_node(node->nodes[i]);
+            node->nodes[i] = nullptr;
+        }
+        node->contentType = CT_EMPTY;
+    }
+}
+
+void bulk_add_leaf(struct OctNode* node, struct LinkedStackRoot* ls) {
+    dbgAssert(node->contentType == CT_EMPTY);
+
+    if(ls->count <= NODE_CHILDREN_NUM) {
+        while(ls->count > 0) {
+            add_leaf(node, get_and_pop_value(ls));
+        }
+    } else {
+        calculate_average_pos(ls, &node->center);
+
+        struct LinkedStackRoot* childLeafStacks[NODE_CHILDREN_NUM];
+        for(int i = 0; i < NODE_CHILDREN_NUM; i++) {
+            childLeafStacks[i] = create_linked_stack_root();
+            node->nodes[i] = create_oct_node();
+        }
+
+        while(ls->count > 0) {
+            struct Leaf* value = get_and_pop_value(ls);
+            add_node(childLeafStacks[get_pos_index(&node->center, &value->pos)], value);
+        }
+
+        for(int i = 0; i < NODE_CHILDREN_NUM; i++) {
+            bulk_add_leaf(node->nodes[i], childLeafStacks[i]);
+            destroy_linked_stack_root(childLeafStacks[i]);
+        }
+
+        node->contentType = CT_NODES;
+    }
+}
+
+void balance_tree(struct OctNode* node) {
+    struct LinkedStackRoot* ls = create_linked_stack_root();
+    drain_tree(node, ls);
+    bulk_add_leaf(node, ls);
+    destroy_linked_stack_root(ls);
+}
