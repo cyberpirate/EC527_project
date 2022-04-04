@@ -9,6 +9,8 @@ typedef float coord_t;
 
 #define UNIVERSE_SIZE 100
 #define RAND_SEED 506
+#define LEAF_COUNT 1000
+#define ITERS 1000
 
 
 #define nullptr 0
