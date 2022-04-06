@@ -13,6 +13,7 @@
 #define CT_NODES  2
 
 #define NODE_CHILDREN_NUM 8
+#define LEAF_CHILDREN_NUM 8
 
 struct LinkedStackRoot;
 
@@ -28,20 +29,25 @@ struct Leaf {
 
 struct OctNode {
     uint8_t contentType;
-    struct Pos center;
+    struct Pos maxExt;
+    struct Pos minExt;
     union {
-        struct Leaf* leaves[NODE_CHILDREN_NUM];
+        struct Leaf* leaves[LEAF_CHILDREN_NUM];
         struct OctNode* nodes[NODE_CHILDREN_NUM];
     };
 };
 
 /**
- * Find the octant of pos relative to center
- * @param center
+ * Find the octant of pos relative to center.
+ * The return is three least significant bits, set to 1 if positive
+ * as follows
+ * +x | +y | +z
+ * @param minExt
+ * @param maxExt
  * @param pos
  * @return
  */
-uint8_t get_pos_index(const struct Pos* center, struct Pos* pos);
+uint8_t get_pos_index(struct Pos* minExt, struct Pos* maxExt, struct Pos* pos);
 
 /**
  * Create an empty node
@@ -95,23 +101,11 @@ void remove_leaf(struct OctNode* node, struct Leaf* leaf);
 int node_size(struct OctNode* node);
 
 /**
- * Drain all leaves to linked stack
+ * Check if leaf is inside node extents
  * @param node
+ * @param leaf
+ * @return
  */
-void drain_tree(struct OctNode* node, struct LinkedStackRoot* ls);
-
-/**
- * Bulk add leaves in a balanced way.
- * This should only be used on an empty tree.
- * @param node
- * @param ls
- */
-void bulk_add_leaf(struct OctNode* node, struct LinkedStackRoot* ls);
-
-/**
- * Balance a tree
- * @param node
- */
-void balance_tree(struct OctNode* node);
+uint8_t leaf_inside(struct OctNode* node, struct Leaf* leaf);
 
 #endif //EC527_PROJECT_OCT_TREE_H
