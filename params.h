@@ -12,6 +12,7 @@ typedef double coord_t;
 #define RAND_SEED 506
 #define LEAF_COUNT 1000
 #define ITERS 1000
+#define FRAME_STEP 0.5
 
 #define G (6.67E-11 * 1E14)
 #define nullptr 0

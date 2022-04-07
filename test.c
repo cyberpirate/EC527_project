@@ -124,32 +124,7 @@ TEST linked_stack(void) {
     PASS();
 }
 
-TEST oct_tree_calc_center_of_mass(void) {
-
-    struct OctNode* root = create_oct_node();
-
-    int leafNum = NODE_CHILDREN_NUM*3;
-    struct Leaf* leaves[leafNum];
-
-    for(int i = 0; i < leafNum; i++) {
-        leaves[i] = create_leaf();
-        leaves[i]->pos = rand_pos();
-        add_leaf(root, leaves[i]);
-    }
-
-    calc_center_of_mass(root);
-
-    for(int i = 0; i < leafNum; i++) {
-        remove_leaf(root, leaves[i]);
-        destroy_leaf(leaves[i]);
-    }
-
-    destroy_oct_node(root);
-
-    PASS();
-}
-
-TEST oct_tree_calc_force(void) {
+TEST oct_tree_calc_barns_hutt(void) {
 
     struct OctNode* root = create_oct_node();
 
@@ -164,6 +139,8 @@ TEST oct_tree_calc_force(void) {
 
     calc_center_of_mass(root);
     calc_force(root);
+    apply_force(root);
+    rebalance(root);
 
     for(int i = 0; i < leafNum; i++) {
         remove_leaf(root, leaves[i]);
@@ -186,8 +163,7 @@ int main(int argc, char **argv) {
     RUN_TEST(oct_tree_add);
     RUN_TEST(oct_tree_remove);
     RUN_TEST(linked_stack);
-    RUN_TEST(oct_tree_calc_center_of_mass);
-    RUN_TEST(oct_tree_calc_force);
+    RUN_TEST(oct_tree_calc_barns_hutt);
 
     GREATEST_MAIN_END();        /* display results */
 }

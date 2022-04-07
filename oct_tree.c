@@ -5,7 +5,6 @@
 #include <malloc.h>
 #include <memory.h>
 #include "oct_tree.h"
-#include "linked_stack.h"
 
 uint8_t get_pos_index(Pos* minExt, Pos* maxExt, Pos* pos) {
 
@@ -70,6 +69,7 @@ void explode_node(struct OctNode* node) {
 
     for(int i = 0; i < NODE_CHILDREN_NUM; i++) {
         node->nodes[i] = create_oct_node();
+        node->nodes[i]->parent = node;
         node->nodes[i]->minExt = node->minExt;
         node->nodes[i]->maxExt = node->maxExt;
 
@@ -191,9 +191,9 @@ void remove_leaf(struct OctNode* node, struct Leaf* leaf) {
 
 uint8_t leaf_inside(struct OctNode* node, struct Leaf* leaf) {
     return
-        node->minExt.x <= leaf->pos.x && leaf->pos.x <= node->maxExt.x &&
-        node->minExt.y <= leaf->pos.y && leaf->pos.y <= node->maxExt.y &&
-        node->minExt.z <= leaf->pos.z && leaf->pos.z <= node->maxExt.z;
+        node->minExt.x <= leaf->pos.x && leaf->pos.x < node->maxExt.x &&
+        node->minExt.y <= leaf->pos.y && leaf->pos.y < node->maxExt.y &&
+        node->minExt.z <= leaf->pos.z && leaf->pos.z < node->maxExt.z;
 }
 
 void calc_center_of_mass(struct OctNode* node) {
@@ -291,4 +291,65 @@ void calc_force_internal(struct OctNode* root, struct OctNode* node) {
 
 void calc_force(struct OctNode* node) {
     calc_force_internal(node, node);
+}
+
+void apply_force(struct OctNode* node) {
+    if(node->contentType == CT_EMPTY) return;
+
+    if(node->contentType == CT_LEAVES) {
+        for(int i = 0; i < LEAF_CHILDREN_NUM; i++) {
+            if(node->leaves[i] == nullptr) break;
+
+            mult_scalar(&node->leaves[i]->force, FRAME_STEP);
+            add(&node->leaves[i]->pos, &node->leaves[i]->force);
+        }
+    }
+
+    if(node->contentType == CT_NODES) {
+        for(int i = 0; i < NODE_CHILDREN_NUM; i++) {
+            apply_force(node->nodes[i]);
+        }
+    }
+}
+
+void rebalance_internal(struct OctNode* target, struct Leaf* leaf) {
+    if(leaf_inside(target, leaf)) return;
+
+    remove_leaf(target, leaf);
+
+    struct OctNode* parent = target->parent;
+    while(parent != nullptr) {
+        parent->size--;
+        parent = parent->parent;
+    }
+
+    while(!leaf_inside(target, leaf)) {
+        target = target->parent;
+        dbgAssert(target != nullptr);
+    }
+
+    add_leaf(target, leaf);
+
+    parent = target->parent;
+    while(parent != nullptr) {
+        parent->size++;
+        parent = parent->parent;
+    }
+}
+
+void rebalance(struct OctNode* node) {
+    if(node->contentType == CT_EMPTY) return;
+
+    if(node->contentType == CT_LEAVES) {
+        for(int i = LEAF_CHILDREN_NUM-1; i >= 0; i--) { // iterate in reverse so no leaves will be skipped when removing the current node
+            if(node->leaves[i] == nullptr) continue;
+            rebalance_internal(node, node->leaves[i]);
+        }
+    }
+
+    if(node->contentType == CT_NODES) {
+        for(int i = 0; i < NODE_CHILDREN_NUM; i++) {
+            rebalance(node->nodes[i]);
+        }
+    }
 }

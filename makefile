@@ -14,4 +14,4 @@ main_debug: $(h_files) $(c_files) main.c
 test: $(h_files) $(c_files) test.c greatest.h
 	gcc -D DEBUG -ggdb -lm $(c_files) test.c greatest.h -o test
 
-all: main test
+all: main test main_debug

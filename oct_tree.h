@@ -26,6 +26,7 @@ struct Leaf {
 struct OctNode {
     uint8_t contentType;
     uint16_t size;
+    struct OctNode* parent;
     Pos maxExt;
     Pos minExt;
     Pos centerOfMass;
@@ -110,5 +111,17 @@ void calc_center_of_mass(struct OctNode* node);
  * @param node
  */
 void calc_force(struct OctNode* node);
+
+/**
+ * Apply force calculated across all leaves
+ * @param node
+ */
+void apply_force(struct OctNode* node);
+
+/**
+ * Check if any leaves are out of place and fix them
+ * @param node
+ */
+void rebalance(struct OctNode* node);
 
 #endif //EC527_PROJECT_OCT_TREE_H
