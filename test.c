@@ -4,7 +4,6 @@
 
 #include "greatest.h"
 #include "oct_tree.h"
-#include "linked_stack.h"
 #include "rand_gen.h"
 
 TEST rand_pos_test(void) {
@@ -97,33 +96,6 @@ TEST oct_tree_remove(void) {
     PASS();
 }
 
-TEST linked_stack(void) {
-
-    reset_rand();
-    const int nodeCnt = 20;
-
-    struct LinkedStackRoot* root = create_linked_stack_root();
-
-    for(int i = 0; i < nodeCnt; i++) {
-        struct Leaf* leaf = create_leaf();
-        leaf->pos = rand_pos();
-        add_node(root, leaf);
-    }
-
-    ASSERT_EQ(nodeCnt, root->count);
-
-    for(int i = 0; i < nodeCnt; i++) {
-        destroy_leaf(get_and_pop_value(root));
-    }
-
-    ASSERT_EQ(0, root->count);
-    ASSERT_EQ(nullptr, root->root);
-
-    destroy_linked_stack_root(root);
-
-    PASS();
-}
-
 TEST oct_tree_calc_barns_hutt(void) {
 
     struct OctNode* root = create_oct_node();
@@ -162,7 +134,6 @@ int main(int argc, char **argv) {
     RUN_TEST(oct_node_create);
     RUN_TEST(oct_tree_add);
     RUN_TEST(oct_tree_remove);
-    RUN_TEST(linked_stack);
     RUN_TEST(oct_tree_calc_barns_hutt);
 
     GREATEST_MAIN_END();        /* display results */
