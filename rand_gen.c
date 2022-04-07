@@ -18,8 +18,8 @@ coord_t rand_coord() {
     return ret;
 }
 
-struct Pos rand_pos() {
-    struct Pos ret;
+Pos rand_pos() {
+    Pos ret;
     ret.x = rand_coord();
     ret.y = rand_coord();
     ret.z = rand_coord();

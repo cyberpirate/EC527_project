@@ -7,8 +7,8 @@
 
 #include <stdint-gcc.h>
 #include "params.h"
+#include "utils.h"
 
-struct Pos;
 struct Leaf;
 
 struct LinkedStackNode {
@@ -52,6 +52,6 @@ void destroy_linked_stack_root(struct LinkedStackRoot* root);
  * @param pos
  * @return
  */
-void calculate_average_pos(struct LinkedStackRoot* root, struct Pos* pos);
+void calculate_average_pos(struct LinkedStackRoot* root, Pos* pos);
 
 #endif //EC527_PROJECT_LINKED_STACK_H

@@ -7,10 +7,10 @@
 #include "oct_tree.h"
 #include "linked_stack.h"
 
-uint8_t get_pos_index(struct Pos* minExt, struct Pos* maxExt, struct Pos* pos) {
+uint8_t get_pos_index(Pos* minExt, Pos* maxExt, Pos* pos) {
 
     uint8_t ret = 0;
-    struct Pos center;
+    Pos center;
 
     center.x = (maxExt->x + minExt->x) / 2;
     center.y = (maxExt->y + minExt->y) / 2;
@@ -52,7 +52,7 @@ void explode_node(struct OctNode* node) {
 
     dbgAssert(node->contentType == CT_LEAVES);
 
-    struct Pos center;
+    Pos center;
 
     center.x = (node->maxExt.x + node->minExt.x) / 2;
     center.y = (node->maxExt.y + node->minExt.y) / 2;
@@ -94,6 +94,8 @@ void explode_node(struct OctNode* node) {
 
     for(int i = 0; i < NODE_CHILDREN_NUM; i++)
         add_leaf(node, leaves[i]);
+
+    node->size = NODE_CHILDREN_NUM;
 }
 
 struct Leaf* create_leaf() {
@@ -111,6 +113,8 @@ void add_leaf(struct OctNode* node, struct Leaf* leaf) {
         node->contentType = CT_LEAVES;
     }
 
+    node->size++;
+
     if(node->contentType == CT_LEAVES) {
         int i = 0;
         for(; i < LEAF_CHILDREN_NUM; i++) {
@@ -122,6 +126,7 @@ void add_leaf(struct OctNode* node, struct Leaf* leaf) {
 
         if(i == NODE_CHILDREN_NUM) {
             explode_node(node);
+            node->size++;
         }
     }
 
@@ -135,6 +140,8 @@ void add_leaf(struct OctNode* node, struct Leaf* leaf) {
 
 void remove_leaf(struct OctNode* node, struct Leaf* leaf) {
     dbgAssert(node->contentType != CT_EMPTY);
+
+    node->size--;
 
     if(node->contentType == CT_LEAVES) {
 
@@ -182,34 +189,106 @@ void remove_leaf(struct OctNode* node, struct Leaf* leaf) {
     }
 }
 
-int node_size(struct OctNode* node) {
-    if(node->contentType == CT_EMPTY) {
-        return 0;
-    }
-
-    if(node->contentType == CT_LEAVES) {
-        int i = 0;
-        for(; i < LEAF_CHILDREN_NUM; i++)
-            if(node->leaves[i] == nullptr)
-                break;
-        return i;
-    }
-
-    if(node->contentType == CT_NODES) {
-        int c = 0;
-        for(int i = 0; i < NODE_CHILDREN_NUM; i++) {
-            c += node_size(node->nodes[i]);
-        }
-        return c;
-    }
-
-    dbgAssert(0);
-    return 0;
-}
-
 uint8_t leaf_inside(struct OctNode* node, struct Leaf* leaf) {
     return
         node->minExt.x <= leaf->pos.x && leaf->pos.x <= node->maxExt.x &&
         node->minExt.y <= leaf->pos.y && leaf->pos.y <= node->maxExt.y &&
         node->minExt.z <= leaf->pos.z && leaf->pos.z <= node->maxExt.z;
+}
+
+void calc_center_of_mass(struct OctNode* node) {
+    if(node->contentType == CT_EMPTY) {
+        node->centerOfMass.x = (node->maxExt.x + node->minExt.x) / 2;
+        node->centerOfMass.y = (node->maxExt.y + node->minExt.y) / 2;
+        node->centerOfMass.z = (node->maxExt.z + node->minExt.z) / 2;
+    }
+
+    if(node->contentType == CT_LEAVES) {
+        node->centerOfMass.x = 0;
+        node->centerOfMass.y = 0;
+        node->centerOfMass.z = 0;
+
+        for(int i = 0; i < LEAF_CHILDREN_NUM; i++) {
+            if(node->leaves[i] == nullptr)
+                break;
+
+            node->centerOfMass.x += node->leaves[i]->pos.x / (float) node->size;
+            node->centerOfMass.y += node->leaves[i]->pos.y / (float) node->size;
+            node->centerOfMass.z += node->leaves[i]->pos.z / (float) node->size;
+        }
+    }
+
+    if(node->contentType == CT_NODES) {
+        node->centerOfMass.x = 0;
+        node->centerOfMass.y = 0;
+        node->centerOfMass.z = 0;
+
+        for(int i = 0; i < NODE_CHILDREN_NUM; i++) {
+            node->centerOfMass.x += node->nodes[i]->centerOfMass.x * (float) node->nodes[i]->size / (float) node->size;
+            node->centerOfMass.y += node->nodes[i]->centerOfMass.y * (float) node->nodes[i]->size / (float) node->size;
+            node->centerOfMass.z += node->nodes[i]->centerOfMass.z * (float) node->nodes[i]->size / (float) node->size;
+        }
+    }
+}
+
+void calc_force_leaf(struct OctNode* node, struct Leaf* leaf) {
+    if(node->contentType == CT_EMPTY) return;
+
+    if(node->contentType == CT_LEAVES) {
+        for(int i = 0; i < LEAF_CHILDREN_NUM; i++) {
+            if(node->leaves[i] == nullptr) break;
+            if(node->leaves[i] == leaf) continue;
+
+            coord_t d = dist(&leaf->pos, &node->leaves[i]->pos);
+            coord_t f = (G*2)/(d*d);
+            Force fVec = vec_dir(&leaf->pos, &node->leaves[i]->pos);
+            mult_scalar(&fVec, f);
+
+            add(&leaf->force, &fVec);
+        }
+    }
+
+    if(node->contentType == CT_NODES) {
+        coord_t s = node->maxExt.x - node->minExt.x;
+        s = s > 0 ? s : -s;
+
+        coord_t d = dist(&node->centerOfMass, &leaf->pos);
+
+        if(s/d < SD_THRESHOLD) { // node is far enough away
+
+            coord_t f = (G*(node->size + 1))/(d*d);
+            Force fVec = vec_dir(&leaf->pos, &node->centerOfMass);
+            mult_scalar(&fVec, f);
+
+            add(&leaf->force, &fVec);
+
+        } else { // node is too close
+            for(int i = 0; i < NODE_CHILDREN_NUM; i++) {
+                calc_force_leaf(node->nodes[i], leaf);
+            }
+        }
+    }
+}
+
+void calc_force_internal(struct OctNode* root, struct OctNode* node) {
+    if(node->contentType == CT_EMPTY) return;
+
+    if(node->contentType == CT_LEAVES) {
+        for(int i = 0; i < LEAF_CHILDREN_NUM; i++) {
+            if(node->leaves[i] == nullptr) break;
+
+            set(&node->leaves[i]->force, 0);
+            calc_force_leaf(root, node->leaves[i]);
+        }
+    }
+
+    if(node->contentType == CT_NODES) {
+        for(int i = 0; i < NODE_CHILDREN_NUM; i++) {
+            calc_force_internal(root, node->nodes[i]);
+        }
+    }
+}
+
+void calc_force(struct OctNode* node) {
+    calc_force_internal(node, node);
 }

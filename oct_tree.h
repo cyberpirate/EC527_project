@@ -7,6 +7,7 @@
 
 #include <stdint-gcc.h>
 #include "params.h"
+#include "utils.h"
 
 #define CT_EMPTY  0
 #define CT_LEAVES 1
@@ -17,20 +18,17 @@
 
 struct LinkedStackRoot;
 
-struct Pos {
-    coord_t x;
-    coord_t y;
-    coord_t z;
-};
-
 struct Leaf {
-    struct Pos pos;
+    Pos pos;
+    Force force;
 };
 
 struct OctNode {
     uint8_t contentType;
-    struct Pos maxExt;
-    struct Pos minExt;
+    uint16_t size;
+    Pos maxExt;
+    Pos minExt;
+    Pos centerOfMass;
     union {
         struct Leaf* leaves[LEAF_CHILDREN_NUM];
         struct OctNode* nodes[NODE_CHILDREN_NUM];
@@ -47,7 +45,7 @@ struct OctNode {
  * @param pos
  * @return
  */
-uint8_t get_pos_index(struct Pos* minExt, struct Pos* maxExt, struct Pos* pos);
+uint8_t get_pos_index(Pos* minExt, Pos* maxExt, Pos* pos);
 
 /**
  * Create an empty node
@@ -94,18 +92,23 @@ void add_leaf(struct OctNode* node, struct Leaf* leaf);
 void remove_leaf(struct OctNode* node, struct Leaf* leaf);
 
 /**
- * Return the size of a node
- * @param node
- * @return
- */
-int node_size(struct OctNode* node);
-
-/**
  * Check if leaf is inside node extents
  * @param node
  * @param leaf
  * @return
  */
 uint8_t leaf_inside(struct OctNode* node, struct Leaf* leaf);
+
+/**
+ * Calculate the center of mass for a node
+ * @param node
+ */
+void calc_center_of_mass(struct OctNode* node);
+
+/**
+ * Calculate the forces for all leaves in the tree
+ * @param node
+ */
+void calc_force(struct OctNode* node);
 
 #endif //EC527_PROJECT_OCT_TREE_H

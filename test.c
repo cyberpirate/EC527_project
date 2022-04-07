@@ -12,7 +12,7 @@ TEST rand_pos_test(void) {
     reset_rand();
 
     for(int i = 0; i < 5; i++) {
-        struct Pos pos = rand_pos();
+        Pos pos = rand_pos();
         printf("x: %.02f\ny: %.02f\nz: %.02f\n", pos.x, pos.y, pos.z);
     }
 
@@ -59,7 +59,7 @@ TEST oct_tree_add(void) {
     }
 
     ASSERT_EQ(CT_NODES, root->contentType);
-    ASSERT_EQ(leafNum, node_size(root));
+    ASSERT_EQ(leafNum, root->size);
 
     for(int i = 0; i < leafNum; i++) {
         remove_leaf(root, leaves[i]);
@@ -89,7 +89,7 @@ TEST oct_tree_remove(void) {
         destroy_leaf(leaves[i]);
     }
 
-    ASSERT_EQ(0, node_size(root));
+    ASSERT_EQ(0, root->size);
     ASSERT_EQ(CT_EMPTY, root->contentType);
 
     destroy_oct_node(root);
@@ -124,55 +124,56 @@ TEST linked_stack(void) {
     PASS();
 }
 
-//TEST balance_tree_test(void) {
-//    printf("\n");
-//
-//    struct OctNode* root = create_oct_node();
-//
-//    int leafNum = 1000;
-//    struct Leaf* leaves[leafNum];
-//
-//    for(int i = 0; i < leafNum; i++) {
-//        leaves[i] = create_leaf();
-//        leaves[i]->pos = rand_pos();
-//        add_leaf(root, leaves[i]);
-//    }
-//
-//    ASSERT_EQ(CT_NODES, root->contentType);
-//
-//    int minUNodeCount = leafNum;
-//    int maxUNodeCount = 0;
-//    int minBNodeCount = leafNum;
-//    int maxBNodeCount = 0;
-//
-//    for(int i = 0; i < NODE_CHILDREN_NUM; i++) {
-//        int ns = node_size(root->nodes[i]);
-//        printf("%d: %d\n", i, ns);
-//        minUNodeCount = minUNodeCount < ns ? minUNodeCount : ns;
-//        maxUNodeCount = maxUNodeCount > ns ? maxUNodeCount : ns;
-//    }
-//
-//    balance_tree(root);
-//
-//    for(int i = 0; i < NODE_CHILDREN_NUM; i++) {
-//        int ns = node_size(root->nodes[i]);
-//        printf("%d: %d\n", i, ns);
-//        minBNodeCount = minBNodeCount < ns ? minBNodeCount : ns;
-//        maxBNodeCount = maxBNodeCount > ns ? maxBNodeCount : ns;
-//    }
-//
-//    printf("unbalanced spread: %d\n", maxUNodeCount - minUNodeCount);
-//    printf("balanced spread  : %d\n", maxBNodeCount - minBNodeCount);
-//
-//    for(int i = 0; i < leafNum; i++) {
-//        remove_leaf(root, leaves[i]);
-//        destroy_leaf(leaves[i]);
-//    }
-//
-//    destroy_oct_node(root);
-//
-//    PASS();
-//}
+TEST oct_tree_calc_center_of_mass(void) {
+
+    struct OctNode* root = create_oct_node();
+
+    int leafNum = NODE_CHILDREN_NUM*3;
+    struct Leaf* leaves[leafNum];
+
+    for(int i = 0; i < leafNum; i++) {
+        leaves[i] = create_leaf();
+        leaves[i]->pos = rand_pos();
+        add_leaf(root, leaves[i]);
+    }
+
+    calc_center_of_mass(root);
+
+    for(int i = 0; i < leafNum; i++) {
+        remove_leaf(root, leaves[i]);
+        destroy_leaf(leaves[i]);
+    }
+
+    destroy_oct_node(root);
+
+    PASS();
+}
+
+TEST oct_tree_calc_force(void) {
+
+    struct OctNode* root = create_oct_node();
+
+    int leafNum = NODE_CHILDREN_NUM*3;
+    struct Leaf* leaves[leafNum];
+
+    for(int i = 0; i < leafNum; i++) {
+        leaves[i] = create_leaf();
+        leaves[i]->pos = rand_pos();
+        add_leaf(root, leaves[i]);
+    }
+
+    calc_center_of_mass(root);
+    calc_force(root);
+
+    for(int i = 0; i < leafNum; i++) {
+        remove_leaf(root, leaves[i]);
+        destroy_leaf(leaves[i]);
+    }
+
+    destroy_oct_node(root);
+
+    PASS();
+}
 
 /* Add all the definitions that need to be in the test runner's main file. */
 GREATEST_MAIN_DEFS();
@@ -185,7 +186,8 @@ int main(int argc, char **argv) {
     RUN_TEST(oct_tree_add);
     RUN_TEST(oct_tree_remove);
     RUN_TEST(linked_stack);
-//    RUN_TEST(balance_tree_test);
+    RUN_TEST(oct_tree_calc_center_of_mass);
+    RUN_TEST(oct_tree_calc_force);
 
     GREATEST_MAIN_END();        /* display results */
 }

@@ -6,6 +6,7 @@
 #define EC527_PROJECT_RAND_GEN_H
 
 #include "params.h"
+#include "utils.h"
 
 /**
  * Reset the random number generator with the starting seed
@@ -22,6 +23,6 @@ coord_t rand_coord();
  * Get a random position
  * @return
  */
-struct Pos rand_pos();
+Pos rand_pos();
 
 #endif //EC527_PROJECT_RAND_GEN_H

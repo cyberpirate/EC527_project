@@ -37,7 +37,7 @@ void destroy_linked_stack_root(struct LinkedStackRoot* root) {
     free(root);
 }
 
-void calculate_average_pos(struct LinkedStackRoot* root, struct Pos* pos) {
+void calculate_average_pos(struct LinkedStackRoot* root, Pos* pos) {
     pos->x = 0;
     pos->y = 0;
     pos->z = 0;

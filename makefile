@@ -1,14 +1,17 @@
 
 clean:
-	-rm main test
+	-rm main test main_debug
 
-main: main.c oct_tree.c rand_gen.c linked_stack.c
-	gcc main.c oct_tree.c rand_gen.c linked_stack.c -o main
+h_files = linked_stack.h oct_tree.h rand_gen.h utils.h params.h
+c_files = linked_stack.c oct_tree.c rand_gen.c utils.c
 
-main_debug: main.c oct_tree.c rand_gen.c linked_stack.c
-	gcc -D DEBUG -ggdb main.c oct_tree.c rand_gen.c linked_stack.c -o main_debug
+main: $(h_files) $(c_files) main.c
+	gcc -lm $(c_files) main.c -o main
 
-test: test.c oct_tree.c rand_gen.c linked_stack.c
-	gcc -D DEBUG -ggdb test.c oct_tree.c rand_gen.c linked_stack.c -o test
+main_debug: $(h_files) $(c_files) main.c
+	gcc -D DEBUG -ggdb -lm $(c_files) main.c -o main_debug
+
+test: $(h_files) $(c_files) test.c greatest.h
+	gcc -D DEBUG -ggdb -lm $(c_files) test.c greatest.h -o test
 
 all: main test
