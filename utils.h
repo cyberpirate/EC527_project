@@ -75,4 +75,16 @@ void norm(struct Vec* vec);
  */
 struct Vec vec_dir(struct Vec* v1, struct Vec* v2);
 
+/**
+ * Clamp coord to world size
+ * @param v
+ */
+void clamp_coord_to_universe(coord_t* v);
+
+/**
+ * Clamp position to ensure it does not leave the world bounds
+ * @param pos
+ */
+void clamp_to_universe(Pos* pos);
+
 #endif //EC527_PROJECT_UTILS_H

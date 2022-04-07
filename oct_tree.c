@@ -30,13 +30,13 @@ struct OctNode* create_oct_node() {
     struct OctNode* ret = (struct OctNode*) malloc(sizeof(struct OctNode));
     memset(ret, 0, sizeof(struct OctNode));
 
-    ret->maxExt.x = UNIVERSE_SIZE;
-    ret->maxExt.y = UNIVERSE_SIZE;
-    ret->maxExt.z = UNIVERSE_SIZE;
+    ret->maxExt.x = (UNIVERSE_SIZE + 0.1); // add some wiggle room for elements right on the edge
+    ret->maxExt.y = (UNIVERSE_SIZE + 0.1);
+    ret->maxExt.z = (UNIVERSE_SIZE + 0.1);
 
-    ret->minExt.x = -UNIVERSE_SIZE;
-    ret->minExt.y = -UNIVERSE_SIZE;
-    ret->minExt.z = -UNIVERSE_SIZE;
+    ret->minExt.x = -(UNIVERSE_SIZE + 0.1);
+    ret->minExt.y = -(UNIVERSE_SIZE + 0.1);
+    ret->minExt.z = -(UNIVERSE_SIZE + 0.1);
 
     return ret;
 }
@@ -302,6 +302,7 @@ void apply_force(struct OctNode* node) {
 
             mult_scalar(&node->leaves[i]->force, FRAME_STEP);
             add(&node->leaves[i]->pos, &node->leaves[i]->force);
+            clamp_to_universe(&node->leaves[i]->pos);
         }
     }
 

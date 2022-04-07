@@ -54,3 +54,18 @@ struct Vec vec_dir(struct Vec* v1, struct Vec* v2) {
     norm(&ret);
     return ret;
 }
+
+void clamp_coord_to_universe(coord_t* v) {
+    if(*v < -UNIVERSE_SIZE) {
+        *v = -UNIVERSE_SIZE;
+    }
+    if(*v > UNIVERSE_SIZE) {
+        *v = UNIVERSE_SIZE;
+    }
+}
+
+void clamp_to_universe(Pos* pos) {
+    clamp_coord_to_universe(&pos->x);
+    clamp_coord_to_universe(&pos->y);
+    clamp_coord_to_universe(&pos->z);
+}

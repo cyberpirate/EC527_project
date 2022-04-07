@@ -14,7 +14,7 @@ typedef double coord_t;
 #define ITERS 1000
 #define FRAME_STEP 0.5
 
-#define G (6.67E-11 * 1E14)
+#define G (6.67E-11)
 #define nullptr 0
 
 #ifdef DEBUG
