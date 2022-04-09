@@ -5,25 +5,14 @@
 #include "params.h"
 #include "oct_tree.h"
 #include "rand_gen.h"
-
-double interval(struct timespec start, struct timespec end)
-{
-    struct timespec temp;
-    temp.tv_sec = end.tv_sec - start.tv_sec;
-    temp.tv_nsec = end.tv_nsec - start.tv_nsec;
-    if (temp.tv_nsec < 0) {
-        temp.tv_sec = temp.tv_sec - 1;
-        temp.tv_nsec = temp.tv_nsec + 1000000000;
-    }
-    return (((double)temp.tv_sec) + ((double)temp.tv_nsec)*1.0e-9);
-}
+#include "utils.h"
 
 int main(int argc, char *argv[])
 {
     reset_rand();
 
     struct OctNode* root = create_oct_node();
-    struct Leaf* leaves[LEAF_COUNT];
+    struct Leaf* leaves[POINT_COUNT];
     double times[ITERS];
     struct timespec time_start, time_stop;
     struct timespec tot_time_start, tot_time_stop;
@@ -31,12 +20,12 @@ int main(int argc, char *argv[])
 
 
     printf("frame");
-    for(int i = 0; i < LEAF_COUNT; i++)
+    for(int i = 0; i < POINT_COUNT; i++)
         printf(",%d_x,%d_y,%d_z", i, i, i);
     printf("\n");
 
 
-    for(int i = 0; i < LEAF_COUNT; i++) {
+    for(int i = 0; i < POINT_COUNT; i++) {
         leaves[i] = create_leaf();
         leaves[i]->pos = rand_pos();
         add_leaf(root, leaves[i]);
@@ -54,12 +43,12 @@ int main(int argc, char *argv[])
         times[i] = interval(time_start, time_stop);
 
         printf("%d", i);
-        for(int j = 0; j < LEAF_COUNT; j++)
-            printf(",%f,%f,%f", leaves[i]->pos.x, leaves[i]->pos.y, leaves[i]->pos.z);
+        for(int j = 0; j < POINT_COUNT; j++)
+            printf(",%f,%f,%f", leaves[j]->pos.x, leaves[j]->pos.y, leaves[j]->pos.z);
         printf("\n");
     }
 
-    for(int i = 0; i < LEAF_COUNT; i++) {
+    for(int i = 0; i < POINT_COUNT; i++) {
         remove_leaf(root, leaves[i]);
         destroy_leaf(leaves[i]);
     }

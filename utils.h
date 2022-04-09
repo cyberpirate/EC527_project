@@ -6,7 +6,7 @@
 #define EC527_PROJECT_UTILS_H
 
 #include "params.h"
-
+#include <time.h>
 
 
 struct Vec {
@@ -86,5 +86,7 @@ void clamp_coord_to_universe(coord_t* v);
  * @param pos
  */
 void clamp_to_universe(Pos* pos);
+
+double interval(struct timespec start, struct timespec end);
 
 #endif //EC527_PROJECT_UTILS_H
