@@ -4,7 +4,9 @@
 
 #include <malloc.h>
 #include <memory.h>
+#include <math.h>
 #include "oct_tree.h"
+#include "rand_gen.h"
 
 uint8_t get_pos_index(Pos* minExt, Pos* maxExt, Pos* pos) {
 
@@ -89,6 +91,20 @@ void explode_node(struct OctNode* node) {
             node->nodes[i]->minExt.z = center.z;
         } else {
             node->nodes[i]->maxExt.z = center.z;
+        }
+    }
+
+    coord_t d = 0;
+    for(int i = 0; i < NODE_CHILDREN_NUM-1; i++) {
+        d += dist(&leaves[i]->pos, &leaves[i+1]->pos);
+    }
+    if(d < SAME_POS_TOL) {
+        for(int i = 0; i < NODE_CHILDREN_NUM; i++) {
+            Pos p = rand_pos();
+            norm(&p);
+            mult_scalar(&p, (node->maxExt.x - node->minExt.x)*SAME_POS_MOV);
+            add(&leaves[i]->pos, &p);
+            clamp_to_universe(&leaves[i]->pos, &leaves[i]->velocity);
         }
     }
 
@@ -240,6 +256,7 @@ void calc_force_leaf(struct OctNode* node, struct Leaf* leaf) {
             if(node->leaves[i] == leaf) continue;
 
             coord_t d = dist(&leaf->pos, &node->leaves[i]->pos);
+            if(d == 0) continue;
             coord_t f = (G*2)/(d*d);
             Force fVec = vec_dir(&leaf->pos, &node->leaves[i]->pos);
             mult_scalar(&fVec, f);
@@ -300,15 +317,35 @@ void apply_force(struct OctNode* node) {
         for(int i = 0; i < LEAF_CHILDREN_NUM; i++) {
             if(node->leaves[i] == nullptr) break;
 
-            mult_scalar(&node->leaves[i]->force, FRAME_STEP);
-            add(&node->leaves[i]->pos, &node->leaves[i]->force);
-            clamp_to_universe(&node->leaves[i]->pos);
+            mult_scalar(&node->leaves[i]->force, FORCE_MULT);
+            add(&node->leaves[i]->velocity, &node->leaves[i]->force);
         }
     }
 
     if(node->contentType == CT_NODES) {
         for(int i = 0; i < NODE_CHILDREN_NUM; i++) {
             apply_force(node->nodes[i]);
+        }
+    }
+}
+
+void apply_velocity(struct OctNode* node) {
+    if(node->contentType == CT_EMPTY) return;
+
+    if(node->contentType == CT_LEAVES) {
+        for(int i = 0; i < LEAF_CHILDREN_NUM; i++) {
+            if(node->leaves[i] == nullptr) break;
+
+            Velocity v = node->leaves[i]->velocity;
+            mult_scalar(&v, VELOCITY_MULT);
+            add(&node->leaves[i]->pos, &v);
+            clamp_to_universe(&node->leaves[i]->pos, &node->leaves[i]->velocity);
+        }
+    }
+
+    if(node->contentType == CT_NODES) {
+        for(int i = 0; i < NODE_CHILDREN_NUM; i++) {
+            apply_velocity(node->nodes[i]);
         }
     }
 }

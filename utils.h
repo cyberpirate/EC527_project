@@ -7,6 +7,7 @@
 
 #include "params.h"
 #include <time.h>
+#include <stdint-gcc.h>
 
 
 struct Vec {
@@ -17,6 +18,7 @@ struct Vec {
 
 typedef struct Vec Pos;
 typedef struct Vec Force;
+typedef struct Vec Velocity;
 
 /**
  * Set vector components to value
@@ -78,14 +80,15 @@ struct Vec vec_dir(struct Vec* v1, struct Vec* v2);
 /**
  * Clamp coord to world size
  * @param v
+ * @return true if clamped
  */
-void clamp_coord_to_universe(coord_t* v);
+uint8_t clamp_coord_to_universe(coord_t* v);
 
 /**
  * Clamp position to ensure it does not leave the world bounds
  * @param pos
  */
-void clamp_to_universe(Pos* pos);
+void clamp_to_universe(Pos* pos, Velocity* vel);
 
 double interval(struct timespec start, struct timespec end);
 

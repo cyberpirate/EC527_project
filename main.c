@@ -18,11 +18,17 @@ int main(int argc, char *argv[])
     struct timespec tot_time_start, tot_time_stop;
     clock_gettime(CLOCK_REALTIME, &tot_time_start);
 
+    FILE* outputFile = fopen("output.csv", "w");
 
-    printf("frame");
+    if(outputFile == nullptr) {
+        printf("Error, can't open output.csv\n");
+        return 1;
+    }
+
+    fprintf(outputFile, "frame");
     for(int i = 0; i < POINT_COUNT; i++)
-        printf(",%d_x,%d_y,%d_z", i, i, i);
-    printf("\n");
+        fprintf(outputFile, ",%d_x,%d_y,%d_z", i, i, i);
+    fprintf(outputFile, "\n");
 
 
     for(int i = 0; i < POINT_COUNT; i++) {
@@ -38,14 +44,15 @@ int main(int argc, char *argv[])
         calc_center_of_mass(root);
         calc_force(root);
         apply_force(root);
+        apply_velocity(root);
         rebalance(root);
         clock_gettime(CLOCK_REALTIME, &time_stop);
         times[i] = interval(time_start, time_stop);
 
-        printf("%d", i);
+        fprintf(outputFile, "%d", i);
         for(int j = 0; j < POINT_COUNT; j++)
-            printf(",%f,%f,%f", leaves[j]->pos.x, leaves[j]->pos.y, leaves[j]->pos.z);
-        printf("\n");
+            fprintf(outputFile, ",%f,%f,%f", leaves[j]->pos.x, leaves[j]->pos.y, leaves[j]->pos.z);
+        fprintf(outputFile, "\n");
     }
 
     for(int i = 0; i < POINT_COUNT; i++) {
@@ -53,6 +60,7 @@ int main(int argc, char *argv[])
         destroy_leaf(leaves[i]);
     }
 
+    fclose(outputFile);
     destroy_oct_node(root);
 
     clock_gettime(CLOCK_REALTIME, &tot_time_stop);

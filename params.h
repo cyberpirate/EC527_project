@@ -11,10 +11,14 @@ typedef double coord_t;
 #define SD_THRESHOLD 0.5
 #define RAND_SEED 506
 #define POINT_COUNT 1000
-#define ITERS 1000
-#define FRAME_STEP 0.5
+#define ITERS 100
+#define FORCE_MULT 0.5
+#define VELOCITY_MULT 1
+#define SAME_POS_TOL 0.1
+#define SAME_POS_MOV 1
+#define MIN_NODE_SIZE 0.5
 
-#define G (6.67E-11)
+#define G (6.67E-11*1E8)
 #define nullptr 0
 
 #ifdef DEBUG

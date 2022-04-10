@@ -112,11 +112,65 @@ TEST oct_tree_calc_barns_hutt(void) {
     calc_center_of_mass(root);
     calc_force(root);
     apply_force(root);
+    apply_velocity(root);
     rebalance(root);
 
     for(int i = 0; i < leafNum; i++) {
         remove_leaf(root, leaves[i]);
         destroy_leaf(leaves[i]);
+    }
+
+    destroy_oct_node(root);
+
+    PASS();
+}
+
+TEST oct_node_add_edge(void) {
+
+    struct OctNode* root = create_oct_node();
+
+    struct Leaf* l = create_leaf();
+
+    int xBit = 1 << 2;
+    int yBit = 1 << 1;
+    int zBit = 1 << 0;
+
+    for(int i = 0; i < 8; i++) {
+        l->pos.x = UNIVERSE_SIZE * ((xBit & i) > 0 ? 1 : -1);
+        l->pos.y = UNIVERSE_SIZE * ((yBit & i) > 0 ? 1 : -1);
+        l->pos.z = UNIVERSE_SIZE * ((zBit & i) > 0 ? 1 : -1);
+
+        add_leaf(root, l);
+        remove_leaf(root, l);
+    }
+
+    destroy_leaf(l);
+    destroy_oct_node(root);
+
+    PASS();
+}
+
+TEST oct_node_explode_all_same(void) {
+
+    struct OctNode* root = create_oct_node();
+
+    int leafNum = LEAF_CHILDREN_NUM+1;
+    struct Leaf* l[leafNum];
+
+    for(int i = 0; i < leafNum; i++) {
+        l[i] = create_leaf();
+        l[i]->pos.x = UNIVERSE_SIZE;
+        l[i]->pos.y = UNIVERSE_SIZE;
+        l[i]->pos.z = UNIVERSE_SIZE;
+    }
+
+    for(int i = 0; i < leafNum; i++) {
+        add_leaf(root, l[i]);
+    }
+
+    for(int i = 0; i < leafNum; i++) {
+        remove_leaf(root, l[i]);
+        destroy_leaf(l[i]);
     }
 
     destroy_oct_node(root);
@@ -135,6 +189,8 @@ int main(int argc, char **argv) {
     RUN_TEST(oct_tree_add);
     RUN_TEST(oct_tree_remove);
     RUN_TEST(oct_tree_calc_barns_hutt);
+    RUN_TEST(oct_node_add_edge);
+    RUN_TEST(oct_node_explode_all_same);
 
     GREATEST_MAIN_END();        /* display results */
 }

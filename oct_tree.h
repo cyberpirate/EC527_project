@@ -16,11 +16,10 @@
 #define NODE_CHILDREN_NUM 8
 #define LEAF_CHILDREN_NUM 8
 
-struct LinkedStackRoot;
-
 struct Leaf {
     Pos pos;
     Force force;
+    Velocity velocity;
 };
 
 struct OctNode {
@@ -117,6 +116,12 @@ void calc_force(struct OctNode* node);
  * @param node
  */
 void apply_force(struct OctNode* node);
+
+/**
+ * Apply velocity calculated across all leaves
+ * @param node
+ */
+void apply_velocity(struct OctNode* node);
 
 /**
  * Check if any leaves are out of place and fix them

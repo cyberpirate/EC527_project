@@ -55,19 +55,29 @@ struct Vec vec_dir(struct Vec* v1, struct Vec* v2) {
     return ret;
 }
 
-void clamp_coord_to_universe(coord_t* v) {
+uint8_t clamp_coord_to_universe(coord_t* v) {
+    uint8_t ret = 0;
     if(*v < -UNIVERSE_SIZE) {
         *v = -UNIVERSE_SIZE;
+        ret = 1;
     }
     if(*v > UNIVERSE_SIZE) {
         *v = UNIVERSE_SIZE;
+        ret = 1;
     }
+    return ret;
 }
 
-void clamp_to_universe(Pos* pos) {
-    clamp_coord_to_universe(&pos->x);
-    clamp_coord_to_universe(&pos->y);
-    clamp_coord_to_universe(&pos->z);
+void clamp_to_universe(Pos* pos, Velocity* vel) {
+    if(clamp_coord_to_universe(&pos->x)) {
+        vel->x *= -1;
+    }
+    if(clamp_coord_to_universe(&pos->y)) {
+        vel->y *= -1;
+    }
+    if(clamp_coord_to_universe(&pos->z)) {
+        vel->z *= -1;
+    }
 }
 
 double interval(struct timespec start, struct timespec end)
