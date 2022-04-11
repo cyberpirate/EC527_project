@@ -78,6 +78,15 @@ void norm(struct Vec* vec);
 struct Vec vec_dir(struct Vec* v1, struct Vec* v2);
 
 /**
+ * Clamp coord to specified range
+ * @param min
+ * @param v
+ * @param max
+ * @return
+ */
+uint8_t clamp(coord_t min, coord_t* v, coord_t max);
+
+/**
  * Clamp coord to world size
  * @param v
  * @return true if clamped

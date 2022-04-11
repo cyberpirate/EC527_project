@@ -178,6 +178,42 @@ TEST oct_node_explode_all_same(void) {
     PASS();
 }
 
+TEST oct_node_rebalance_test(void) {
+
+    struct OctNode* root = create_oct_node();
+
+    int leafNum = LEAF_CHILDREN_NUM*3;
+    struct Leaf* l[leafNum];
+
+    for(int i = 0; i < leafNum; i++) {
+        l[i] = create_leaf();
+        l[i]->pos.x = UNIVERSE_SIZE;
+        l[i]->pos.y = UNIVERSE_SIZE;
+        l[i]->pos.z = UNIVERSE_SIZE;
+    }
+
+    for(int i = 0; i < leafNum; i++) {
+        add_leaf(root, l[i]);
+    }
+
+    for(int i = 0; i < leafNum; i++) {
+        l[i]->pos.x = -UNIVERSE_SIZE;
+        l[i]->pos.y = -UNIVERSE_SIZE;
+        l[i]->pos.z = -UNIVERSE_SIZE;
+    }
+
+    rebalance(root);
+
+    for(int i = 0; i < leafNum; i++) {
+        remove_leaf(root, l[i]);
+        destroy_leaf(l[i]);
+    }
+
+    destroy_oct_node(root);
+
+    PASS();
+}
+
 /* Add all the definitions that need to be in the test runner's main file. */
 GREATEST_MAIN_DEFS();
 
@@ -191,6 +227,7 @@ int main(int argc, char **argv) {
     RUN_TEST(oct_tree_calc_barns_hutt);
     RUN_TEST(oct_node_add_edge);
     RUN_TEST(oct_node_explode_all_same);
+    RUN_TEST(oct_node_rebalance_test);
 
     GREATEST_MAIN_END();        /* display results */
 }

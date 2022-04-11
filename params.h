@@ -11,7 +11,7 @@ typedef double coord_t;
 #define SD_THRESHOLD 0.5
 #define RAND_SEED 506
 #define POINT_COUNT 1000
-#define ITERS 100
+#define ITERS 1000
 #define FORCE_MULT 0.5
 #define VELOCITY_MULT 1
 #define SAME_POS_TOL 0.1

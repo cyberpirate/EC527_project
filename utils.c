@@ -55,17 +55,21 @@ struct Vec vec_dir(struct Vec* v1, struct Vec* v2) {
     return ret;
 }
 
-uint8_t clamp_coord_to_universe(coord_t* v) {
+uint8_t clamp(coord_t min, coord_t* v, coord_t max) {
     uint8_t ret = 0;
-    if(*v < -UNIVERSE_SIZE) {
-        *v = -UNIVERSE_SIZE;
+    if(*v < min) {
+        *v = min;
         ret = 1;
     }
-    if(*v > UNIVERSE_SIZE) {
-        *v = UNIVERSE_SIZE;
+    if(*v > max) {
+        *v = max;
         ret = 1;
     }
     return ret;
+}
+
+uint8_t clamp_coord_to_universe(coord_t* v) {
+    return clamp(-UNIVERSE_SIZE, v, UNIVERSE_SIZE);
 }
 
 void clamp_to_universe(Pos* pos, Velocity* vel) {

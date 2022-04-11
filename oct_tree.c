@@ -104,7 +104,10 @@ void explode_node(struct OctNode* node) {
             norm(&p);
             mult_scalar(&p, (node->maxExt.x - node->minExt.x)*SAME_POS_MOV);
             add(&leaves[i]->pos, &p);
-            clamp_to_universe(&leaves[i]->pos, &leaves[i]->velocity);
+
+            clamp(node->minExt.x, &leaves[i]->pos.x, node->maxExt.x);
+            clamp(node->minExt.y, &leaves[i]->pos.y, node->maxExt.y);
+            clamp(node->minExt.z, &leaves[i]->pos.z, node->maxExt.z);
         }
     }
 
@@ -361,17 +364,34 @@ void rebalance_internal(struct OctNode* target, struct Leaf* leaf) {
         parent = parent->parent;
     }
 
-    while(!leaf_inside(target, leaf)) {
-        target = target->parent;
-        dbgAssert(target != nullptr);
+    struct OctNode* addition_target = target;
+    while(!leaf_inside(addition_target, leaf)) {
+        addition_target = addition_target->parent;
+        dbgAssert(addition_target != nullptr);
     }
 
-    add_leaf(target, leaf);
+    add_leaf(addition_target, leaf);
 
-    parent = target->parent;
+    parent = addition_target->parent;
     while(parent != nullptr) {
         parent->size++;
         parent = parent->parent;
+    }
+
+    target = target->parent;
+    while(target != addition_target && target != nullptr) {
+
+        if(target->contentType == CT_NODES && target->size == 0) {
+            for(int i = 0; i < NODE_CHILDREN_NUM; i++) {
+                destroy_oct_node(target->nodes[i]);
+                target->nodes[i] = nullptr;
+            }
+            target->contentType = CT_EMPTY;
+        } else {
+            break;
+        }
+
+        target = target->parent;
     }
 }
 
@@ -386,7 +406,7 @@ void rebalance(struct OctNode* node) {
     }
 
     if(node->contentType == CT_NODES) {
-        for(int i = 0; i < NODE_CHILDREN_NUM; i++) {
+        for(int i = 0; i < NODE_CHILDREN_NUM && node->contentType == CT_NODES; i++) {
             rebalance(node->nodes[i]);
         }
     }
