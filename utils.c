@@ -95,3 +95,9 @@ double interval(struct timespec start, struct timespec end)
     }
     return (((double)temp.tv_sec) + ((double)temp.tv_nsec)*1.0e-9);
 }
+
+void calc_center(Pos* ext1, Pos* ext2, Pos* center) {
+    center->x = (ext1->x + ext2->x) / 2;
+    center->y = (ext1->y + ext2->y) / 2;
+    center->z = (ext1->z + ext2->z) / 2;
+}
