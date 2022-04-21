@@ -101,13 +101,4 @@ void clamp_to_universe(Pos* pos, Velocity* vel);
 
 double interval(struct timespec start, struct timespec end);
 
-/**
- * Calculate the center point between two extents
- *
- * @param p1
- * @param p2
- * @param center
- */
-void calc_center(Pos* ext1, Pos* ext2, Pos* center);
-
 #endif //EC527_PROJECT_UTILS_H

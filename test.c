@@ -238,6 +238,12 @@ TEST oct_tree_test(void) {
 
     ASSERT_EQ(leafNum, leafCount);
 
+    calc_center_of_mass(tree);
+    calc_force(tree);
+    apply_force(tree);
+    apply_velocity(tree);
+    rebalance(tree);
+
     destroy_tree(tree);
     PASS();
 }

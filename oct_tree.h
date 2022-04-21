@@ -13,9 +13,6 @@
 #define CT_LEAF   1
 #define CT_INODE  2
 
-#define NODE_CHILDREN_NUM 8
-#define LEAF_CHILDREN_NUM 8
-
 typedef uint8_t depth_t;
 typedef uint32_t node_idx_t;
 
@@ -30,19 +27,6 @@ struct HiddenNode {
     node_idx_t size;
 };
 
-//struct OctNode {
-//    uint8_t contentType;
-//    uint16_t size;
-//    struct OctNode* parent;
-//    Pos maxExt;
-//    Pos minExt;
-//    Pos centerOfMass;
-//    union {
-//        struct Leaf* leaves[LEAF_CHILDREN_NUM];
-//        struct OctNode* nodes[NODE_CHILDREN_NUM];
-//    };
-//};
-
 struct OctNode {
     uint8_t contentType;
     union {
@@ -55,7 +39,6 @@ struct OctTree {
     struct OctNode* children;
     node_idx_t elmsCount;
     depth_t depth;
-    Pos universeSize;
 };
 
 /**
@@ -91,5 +74,42 @@ void addLeaf(struct OctTree* tree, struct Leaf* leaf);
  * @param leaf
  */
 void createLeafWithPos(struct OctTree* tree, Pos* pos);
+
+/**
+ * Calculate center of mass for all internal nodes
+ * @param tree
+ */
+void calc_center_of_mass(struct OctTree* tree);
+
+/**
+ * Calculate the force on the leaves
+ * @param tree
+ */
+void calc_force(struct OctTree* tree);
+
+/**
+ * Apply calculated force
+ * @param tree
+ */
+void apply_force(struct OctTree* tree);
+
+/**
+ * Apply calculated force
+ * @param tree
+ */
+void apply_velocity(struct OctTree* tree);
+
+/**
+ * Rebalance tree by finding out of place nodes and moving them
+ * @param tree
+ */
+void rebalance(struct OctTree* tree);
+
+/**
+ * Run function on all leaves
+ * @param tree
+ * @param process_leaf
+ */
+void walk_leaves(struct OctTree* tree, void (*process_leaf)(struct OctNode* node));
 
 #endif //EC527_PROJECT_OCT_TREE_H
