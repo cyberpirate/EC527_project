@@ -11,15 +11,19 @@
 
 FILE* outputFile;
 
-void print_leaf_pos(struct OctNode* node) {
-    fprintf(outputFile, ",%f,%f,%f", node->leaf.pos.x, node->leaf.pos.y, node->leaf.pos.z);
+void print_leaf_pos(struct OctTree* tree, struct Leaf* leaf) {
+    fprintf(outputFile, ",%f,%f,%f", leaf->pos.x, leaf->pos.y, leaf->pos.z);
+}
+
+void set_leaf_pos(struct OctTree* tree, struct Leaf* leaf) {
+    leaf->pos = rand_pos();
 }
 
 int main(int argc, char *argv[])
 {
     reset_rand();
 
-    struct OctTree* root = create_tree();
+    struct OctTree* tree = create_tree(POINT_COUNT);
     double times[ITERS];
     struct timespec time_start, time_stop;
     struct timespec tot_time_start, tot_time_stop;
@@ -38,10 +42,8 @@ int main(int argc, char *argv[])
     fprintf(outputFile, "\n");
 
 
-    for(int i = 0; i < POINT_COUNT; i++) {
-        Pos pos = rand_pos();
-        createLeafWithPos(root, &pos);
-    }
+    walk_leaves(tree, set_leaf_pos);
+    add_leaves_to_tree(tree);
 
 
 #ifdef PRINT_CALCULATING
@@ -49,16 +51,16 @@ int main(int argc, char *argv[])
 #endif
     for(int i = 0; i < ITERS; i++) {
         clock_gettime(CLOCK_REALTIME, &time_start);
-        calc_center_of_mass(root);
-        calc_force(root);
-        apply_force(root);
-        apply_velocity(root);
-        rebalance(root);
+        calc_center_of_mass(tree);
+        calc_force(tree);
+        apply_force(tree);
+        apply_velocity(tree);
+        rebalance(tree);
         clock_gettime(CLOCK_REALTIME, &time_stop);
         times[i] = interval(time_start, time_stop);
 
         fprintf(outputFile, "%d", i);
-        walk_leaves(root, print_leaf_pos);
+        walk_leaves(tree, print_leaf_pos);
         fprintf(outputFile, "\n");
 
 #ifdef PRINT_CALCULATING
@@ -73,7 +75,7 @@ int main(int argc, char *argv[])
 #endif
 
     fclose(outputFile);
-    destroy_tree(root);
+    destroy_tree(tree);
 
     clock_gettime(CLOCK_REALTIME, &tot_time_stop);
     double totalTime = interval(tot_time_start, tot_time_stop);

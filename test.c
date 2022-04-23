@@ -214,27 +214,70 @@
 //    PASS();
 //}
 
+TEST node_util_function_tests(void) {
+
+    ASSERT_EQ(1, depth_size(0));
+    ASSERT_EQ(8, depth_size(1));
+    ASSERT_EQ(8*8, depth_size(2));
+    ASSERT_EQ(8*8*8, depth_size(3));
+
+    ASSERT_EQ(1, array_size_for_depth(0));
+    ASSERT_EQ(8 + 1, array_size_for_depth(1));
+    ASSERT_EQ(8*8 + 8 + 1, array_size_for_depth(2));
+    ASSERT_EQ(8*8*8 + 8*8 + 8 + 1, array_size_for_depth(3));
+
+    ASSERT_EQ(0, idx_start_for_depth(0));
+    ASSERT_EQ(1, idx_start_for_depth(1));
+    ASSERT_EQ(8 + 1, idx_start_for_depth(2));
+    ASSERT_EQ(8*8 + 8 + 1, idx_start_for_depth(3));
+
+    ASSERT_EQ(0, get_depth_for_idx(0));
+    ASSERT_EQ(1, get_depth_for_idx(1));
+    ASSERT_EQ(2, get_depth_for_idx(8 + 1));
+    ASSERT_EQ(3, get_depth_for_idx(8*8 + 8 + 1));
+
+    for(depth_t i = 0; i < 10; i++) {
+        ASSERT_EQ(i, get_depth_for_idx(idx_start_for_depth(i)));
+    }
+
+    ASSERT_EQ(1, get_node_children(0));
+    ASSERT_EQ(9, get_node_children(1));
+    ASSERT_EQ(17, get_node_children(2));
+
+    ASSERT_EQ(0, get_node_parent(1));
+    ASSERT_EQ(0, get_node_parent(8));
+    ASSERT_EQ(1, get_node_parent(9));
+    ASSERT_EQ(1, get_node_parent(16));
+    ASSERT_EQ(2, get_node_parent(17));
+    ASSERT_EQ(2, get_node_parent(24));
+
+    for(node_idx_t i = 0; i < 10; i++) {
+        for(node_idx_t child = 0; child < NODE_CHILD_COUNT; child++) {
+            ASSERT_EQ(i, get_node_parent(get_node_children(i) + child));
+        }
+    }
+
+    PASS();
+}
+
 TEST oct_tree_test(void) {
-    struct OctTree* tree = create_tree();
+    node_idx_t leafNum = 10;
+    struct OctTree* tree = create_tree(leafNum);
 
     reset_rand();
 
-    int leafNum = 10;
-
-    Pos p;
-    for(int i = 0; i < leafNum; i++) {
-        p = rand_pos();
-        createLeafWithPos(tree, &p);
-        if(i > 0)
-            ASSERT_EQ(i+1, tree->children[0].node.size);
+    for(leaf_idx_t i = 0; i < tree->leaf_count; i++) {
+        tree->leaves[i].pos = rand_pos();
+    }
+    for(leaf_idx_t i = 0; i < tree->leaf_count; i++) {
+        addLeaf(tree, i);
+        ASSERT_EQ(i+1, tree->children[0].size);
     }
 
-    ASSERT_EQ(leafNum, tree->children[0].node.size);
-
-    int leafCount = 0;
+    node_idx_t leafCount = 0;
     for(node_idx_t i = 0; i < tree->elmsCount; i++)
-        if(tree->children[i].contentType == CT_LEAF)
-            leafCount++;
+        if(tree->children[i].contentType == CT_LEAVES)
+            leafCount += tree->children[i].size;
 
     ASSERT_EQ(leafNum, leafCount);
 
@@ -254,7 +297,9 @@ GREATEST_MAIN_DEFS();
 int main(int argc, char **argv) {
     GREATEST_MAIN_BEGIN();      /* command-line arguments, initialization. */
 
+    RUN_TEST(node_util_function_tests);
     RUN_TEST(oct_tree_test);
+
 //    RUN_TEST(rand_pos_test);
 //    RUN_TEST(oct_node_create);
 //    RUN_TEST(oct_tree_add);
