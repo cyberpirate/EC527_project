@@ -271,13 +271,13 @@ TEST oct_tree_test(void) {
     }
     for(leaf_idx_t i = 0; i < tree->leaf_count; i++) {
         addLeaf(tree, i);
-        ASSERT_EQ(i+1, tree->children[0].size);
+        ASSERT_EQ(i+1, getNode(tree, 0)->size);
     }
 
     node_idx_t leafCount = 0;
-    for(node_idx_t i = 0; i < tree->elmsCount; i++)
-        if(tree->children[i].contentType == CT_LEAVES)
-            leafCount += tree->children[i].size;
+    for(node_idx_t i = 0; i < array_size_for_depth(tree->depth_count-1); i++)
+        if(getNode(tree, i)->contentType == CT_LEAVES)
+            leafCount += getNode(tree, i)->size;
 
     ASSERT_EQ(leafNum, leafCount);
 

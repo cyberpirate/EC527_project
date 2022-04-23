@@ -16,9 +16,11 @@ struct Leaf* getLeaf(struct OctTree* tree, node_idx_t node_idx, child_pos_idx_t 
 }
 
 struct OctNode* getNode(struct OctTree* tree, node_idx_t node_idx) {
-    dbgAssert(node_idx < tree->elmsCount);
-    dbgAssert((node_idx * sizeof(struct OctNode)) < malloc_usable_size(tree->children));
-    return &tree->children[node_idx];
+    depth_t depth_idx = get_depth_for_idx(node_idx);
+    dbgAssert(depth_idx < tree->depth_count);
+    node_idx_t node_idx_in_depth = node_idx - idx_start_for_depth(depth_idx);
+    dbgAssert(((node_idx_in_depth+1) * sizeof(struct OctNode))  <= malloc_usable_size(tree->depth[depth_idx]));
+    return &tree->depth[depth_idx][node_idx_in_depth];
 }
 
 node_idx_t depth_size(depth_t depth) {
@@ -62,16 +64,27 @@ node_idx_t get_node_parent(node_idx_t idx) {
     return idx_start_for_depth(depth-1) + pos;
 }
 
-void set_tree_depth(struct OctTree* tree, depth_t depth) {
-    uint32_t oldSize = tree->elmsCount * sizeof(struct OctNode);
-    tree->elmsCount = array_size_for_depth(depth-1);
-    uint32_t size = tree->elmsCount * sizeof(struct OctNode);
-    tree->children = realloc(tree->children, size);
-    tree->depth = depth;
-    if(oldSize < size) {
-        memset(((void*) tree->children) + oldSize, 0, size-oldSize);
+void set_tree_depth(struct OctTree* tree, depth_t depth_count) {
+    dbgAssert(tree->depth_count < depth_count);
+    dbgAssert(depth_count <= DEPTH_LIMIT);
+
+    depth_t old_depth = tree->depth_count;
+    struct OctNode** old_depth_ptr = tree->depth;
+
+    tree->depth = calloc(depth_count, sizeof(struct OctNode*));
+    tree->depth_count = depth_count;
+    memset(tree->depth, 0, depth_count*sizeof(struct OctNode*));
+
+    if(old_depth_ptr != nullptr) {
+        memcpy(tree->depth, old_depth_ptr, old_depth * sizeof(struct OctNode*));
+        free(old_depth_ptr);
     }
-    dbgAssert((tree->elmsCount * sizeof(struct OctNode)) <= malloc_usable_size(tree->children));
+
+    for(depth_t i = old_depth; i < tree->depth_count; i++) {
+        tree->depth[i] = calloc(depth_size(i), sizeof(struct OctNode));
+        memset(tree->depth[i], 0, depth_size(i) * sizeof(struct OctNode));
+        dbgAssert(depth_size(i) * sizeof(struct OctNode*) <= malloc_usable_size(tree->depth[i]));
+    }
 }
 
 void walk_tree(struct OctTree* tree, node_idx_t idx, struct Extents* ext, bool (*process_callback)(struct OctTree* tree, node_idx_t idx, struct Extents* ext, void* callbackArg), void* callback_arg) {
@@ -106,7 +119,8 @@ void setNodeToLeafNode(struct OctNode* node) {
 
 void addLeafToLeafNode(struct OctNode* node, leaf_idx_t idx) {
     dbgAssert(node->size < LEAF_CHILD_COUNT);
-    node->leaves[node->size++] = idx;
+    node->leaves[node->size] = idx;
+    node->size++;
 }
 
 void removeLeafFromNode(struct OctNode* node, child_pos_idx_t idx) {
@@ -216,8 +230,9 @@ child_pos_idx_t get_pos_index(struct Extents* ext, Pos* pos) {
 
 void addLeafToNode(struct OctTree* tree, leaf_idx_t leaf_idx, node_idx_t idx, struct Extents* ext) {
 
-    while(idx >= tree->elmsCount) {
-        set_tree_depth(tree, tree->depth+1);
+    depth_t idx_depth = get_depth_for_idx(idx);
+    if(idx_depth >= tree->depth_count) {
+        set_tree_depth(tree, idx_depth + 1);
     }
 
     Pos* leafPos = &tree->leaves[leaf_idx].pos;
@@ -386,19 +401,19 @@ struct OctTree* create_tree(leaf_idx_t leaf_count) {
     memset(tree->leaves, 0, leaf_count*sizeof(struct Leaf));
     tree->leaf_count = leaf_count;
 
-    tree->children = malloc(array_size_for_depth(0) * sizeof(struct OctNode));
-
-    tree->depth = 1;
-    tree->elmsCount = array_size_for_depth(0);
-
-    memset(tree->children, 0, tree->elmsCount * sizeof(struct OctNode));
+    tree->depth = nullptr;
+    tree->depth_count = 0;
+    set_tree_depth(tree, 1);
 
     return tree;
 }
 
 void destroy_tree(struct OctTree* tree) {
     free(tree->leaves);
-    free(tree->children);
+    for(depth_t i = 0; i < tree->depth_count; i++) {
+        free(tree->depth[i]);
+    }
+    free(tree->depth);
     free(tree);
 }
 

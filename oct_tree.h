@@ -37,9 +37,12 @@ struct OctNode {
 struct OctTree {
     struct Leaf* leaves;
     leaf_idx_t leaf_count;
-    struct OctNode* children;
-    node_idx_t elmsCount;
-    depth_t depth;
+
+//    struct OctNode* children;
+//    node_idx_t elmsCount;
+
+    struct OctNode** depth;
+    depth_t depth_count;
 };
 
 /**
@@ -121,7 +124,7 @@ node_idx_t idx_start_for_depth(depth_t depth);
 depth_t get_depth_for_idx(node_idx_t idx);
 node_idx_t get_node_children(node_idx_t idx);
 node_idx_t get_node_parent(node_idx_t idx);
-void set_tree_depth(struct OctTree* tree, depth_t depth);
+void set_tree_depth(struct OctTree* tree, depth_t depth_count);
 void setNodeEmpty(struct OctNode* node);
 void setNodeToLeafNode(struct OctNode* node);
 void addLeafToLeafNode(struct OctNode* node, leaf_idx_t idx);
