@@ -3,6 +3,7 @@
 //
 
 #include "oct_tree.h"
+#include "rand_gen.h"
 #include <malloc.h>
 #include <math.h>
 #include <string.h>
@@ -137,12 +138,25 @@ void removeLeafFromNode(struct OctNode* node, child_pos_idx_t idx) {
     }
 }
 
+void scatterLeavesInNode(struct OctTree* tree, node_idx_t idx, struct Extents* ext) {
+    dbgAssert(getNode(tree, idx)->contentType == CT_LEAVES);
+
+    child_pos_idx_t sizeTarget = LEAF_CHILD_COUNT - MAX_SCATTER;
+
+    while(true) {
+        rebalance_node(tree, idx, ext, nullptr);
+
+        if(getNode(tree, idx)->size <= sizeTarget) break;
+
+        getLeaf(tree, idx, 0)->pos = rand_pos();
+    }
+}
+
 void setNodeToInternalNode(struct OctTree* tree, node_idx_t idx, struct Extents* ext) {
 
-    if(idx != 0) {
-        if (getNode(tree, idx)->size == getNode(tree, get_node_parent(idx))->size) {
-//            printf("error, parent has the same size as child. Depth may be increasing too fast\n");
-        }
+    if(tree->depth_count == DEPTH_LIMIT) {
+        scatterLeavesInNode(tree, idx, ext);
+        return;
     }
 
     node_idx_t size = getNode(tree, idx)->size;
@@ -248,6 +262,13 @@ void addLeafToNode(struct OctTree* tree, leaf_idx_t leaf_idx, node_idx_t idx, st
             return;
         } else {
             setNodeToInternalNode(tree, idx, ext);
+            if(getNode(tree, idx)->contentType != CT_NODES) {
+                // hit depth limit, node has scattered so add
+                if(getNode(tree, idx)->contentType == CT_EMPTY)
+                    setNodeToLeafNode(getNode(tree, idx));
+                addLeafToLeafNode(getNode(tree, idx), leaf_idx);
+                return;
+            }
         }
     }
 

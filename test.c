@@ -291,6 +291,24 @@ TEST oct_tree_test(void) {
     PASS();
 }
 
+TEST scatter_test(void) {
+    node_idx_t leafNum = 10;
+    struct OctTree* tree = create_tree(leafNum);
+
+    reset_rand();
+
+    for(leaf_idx_t i = 0; i < tree->leaf_count; i++) {
+        tree->leaves[i].pos.x = 0;
+        tree->leaves[i].pos.y = 0;
+        tree->leaves[i].pos.z = 0;
+    }
+
+    add_leaves_to_tree(tree);
+
+    destroy_tree(tree);
+    PASS();
+}
+
 /* Add all the definitions that need to be in the test runner's main file. */
 GREATEST_MAIN_DEFS();
 
@@ -299,6 +317,7 @@ int main(int argc, char **argv) {
 
     RUN_TEST(node_util_function_tests);
     RUN_TEST(oct_tree_test);
+    RUN_TEST(scatter_test);
 
 //    RUN_TEST(rand_pos_test);
 //    RUN_TEST(oct_node_create);
