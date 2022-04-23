@@ -10,14 +10,14 @@
 //region idx tree traversal
 
 struct Leaf* getLeaf(struct OctTree* tree, node_idx_t node_idx, child_pos_idx_t leaf_idx) {
-    struct OctNode* node = getNode(tree, node_idx);
-    dbgAssert(node->contentType == CT_LEAVES);
-    dbgAssert(node->leaves[leaf_idx] < tree->leaf_count);
-    return &tree->leaves[node->leaves[leaf_idx]];
+    dbgAssert(getNode(tree, node_idx)->contentType == CT_LEAVES);
+    dbgAssert(getNode(tree, node_idx)->leaves[leaf_idx] < tree->leaf_count);
+    return &tree->leaves[getNode(tree, node_idx)->leaves[leaf_idx]];
 }
 
 struct OctNode* getNode(struct OctTree* tree, node_idx_t node_idx) {
     dbgAssert(node_idx < tree->elmsCount);
+    dbgAssert((node_idx * sizeof(struct OctNode)) < malloc_usable_size(tree->children));
     return &tree->children[node_idx];
 }
 
@@ -71,16 +71,15 @@ void set_tree_depth(struct OctTree* tree, depth_t depth) {
     if(oldSize < size) {
         memset(((void*) tree->children) + oldSize, 0, size-oldSize);
     }
+    dbgAssert((tree->elmsCount * sizeof(struct OctNode)) <= malloc_usable_size(tree->children));
 }
 
 void walk_tree(struct OctTree* tree, node_idx_t idx, struct Extents* ext, bool (*process_callback)(struct OctTree* tree, node_idx_t idx, struct Extents* ext, void* callbackArg), void* callback_arg) {
-    struct OctNode* node = getNode(tree, idx);
-
-    if(node->contentType == CT_EMPTY) return;
+    if(getNode(tree, idx)->contentType == CT_EMPTY) return;
 
     if(!process_callback(tree, idx, ext, callback_arg)) return;
 
-    if(node->contentType == CT_NODES) {
+    if(getNode(tree, idx)->contentType == CT_NODES) {
         node_idx_t children_idx = get_node_children(idx);
 
         for(int i = 0; i < NODE_CHILD_COUNT; i++) {
@@ -126,23 +125,19 @@ void removeLeafFromNode(struct OctNode* node, child_pos_idx_t idx) {
 
 void setNodeToInternalNode(struct OctTree* tree, node_idx_t idx, struct Extents* ext) {
 
-    struct OctNode* node = getNode(tree, idx);
-
     if(idx != 0) {
-        struct OctNode *parentNode = getNode(tree, get_node_parent(idx));
-
-        if (node->size == parentNode->size) {
-            printf("error, parent has the same size as child. Depth may be increasing too fast\n");
+        if (getNode(tree, idx)->size == getNode(tree, get_node_parent(idx))->size) {
+//            printf("error, parent has the same size as child. Depth may be increasing too fast\n");
         }
     }
 
-    node_idx_t size = node->size;
+    node_idx_t size = getNode(tree, idx)->size;
     leaf_idx_t leaves[LEAF_CHILD_COUNT];
     for(leaf_idx_t i = 0; i < LEAF_CHILD_COUNT; i++)
-        leaves[i] = node->leaves[i];
+        leaves[i] = getNode(tree, idx)->leaves[i];
 
-    node->contentType = CT_NODES;
-    node->size = 0;
+    getNode(tree, idx)->contentType = CT_NODES;
+    getNode(tree, idx)->size = 0;
 
     for(node_idx_t i = 0; i < size; i++) {
         struct Extents childExt = *ext;
@@ -225,30 +220,27 @@ void addLeafToNode(struct OctTree* tree, leaf_idx_t leaf_idx, node_idx_t idx, st
         set_tree_depth(tree, tree->depth+1);
     }
 
-    struct OctNode* node = getNode(tree, idx);
     Pos* leafPos = &tree->leaves[leaf_idx].pos;
-    dbgAssert(pos_inside(ext, leafPos));
+//    dbgAssert(pos_inside(ext, leafPos));
 
-    if(node->contentType == CT_EMPTY) {
-        setNodeToLeafNode(node);
+    if(getNode(tree, idx)->contentType == CT_EMPTY) {
+        setNodeToLeafNode(getNode(tree, idx));
     }
 
-    if(node->contentType == CT_LEAVES) {
-        if(node->size < LEAF_CHILD_COUNT) {
-            addLeafToLeafNode(node, leaf_idx);
+    if(getNode(tree, idx)->contentType == CT_LEAVES) {
+        if(getNode(tree, idx)->size < LEAF_CHILD_COUNT) {
+            addLeafToLeafNode(getNode(tree, idx), leaf_idx);
             return;
         } else {
             setNodeToInternalNode(tree, idx, ext);
-            node = getNode(tree, idx);
         }
     }
 
-    if(node->contentType == CT_NODES) {
+    if(getNode(tree, idx)->contentType == CT_NODES) {
         child_pos_idx_t posIdx = get_pos_index(ext, leafPos);
         update_extents(ext, posIdx);
         addLeafToNode(tree, leaf_idx, get_node_children(idx) + posIdx, ext);
-        node = getNode(tree, idx);
-        node->size++;
+        getNode(tree, idx)->size++;
         return;
     }
 
@@ -259,38 +251,35 @@ void addLeafToNode(struct OctTree* tree, leaf_idx_t leaf_idx, node_idx_t idx, st
 //region center of mass
 
 void calc_node_center_of_mass(struct OctTree* tree, node_idx_t idx) {
-    struct OctNode* node = getNode(tree, idx);
+    if(getNode(tree, idx)->contentType == CT_EMPTY) return;
 
-    if(node->contentType == CT_EMPTY) return;
+    if(getNode(tree, idx)->contentType == CT_LEAVES) {
+        getNode(tree, idx)->centerOfMass.x = 0;
+        getNode(tree, idx)->centerOfMass.y = 0;
+        getNode(tree, idx)->centerOfMass.z = 0;
 
-    if(node->contentType == CT_LEAVES) {
-        node->centerOfMass.x = 0;
-        node->centerOfMass.y = 0;
-        node->centerOfMass.z = 0;
-
-        for(int i = 0; i < node->size; i++) {
+        for(int i = 0; i < getNode(tree, idx)->size; i++) {
             struct Leaf* leaf = getLeaf(tree, idx, i);
-            node->centerOfMass.x += leaf->pos.x / (float) node->size;
-            node->centerOfMass.y += leaf->pos.y / (float) node->size;
-            node->centerOfMass.z += leaf->pos.z / (float) node->size;
+            getNode(tree, idx)->centerOfMass.x += leaf->pos.x / (float) getNode(tree, idx)->size;
+            getNode(tree, idx)->centerOfMass.y += leaf->pos.y / (float) getNode(tree, idx)->size;
+            getNode(tree, idx)->centerOfMass.z += leaf->pos.z / (float) getNode(tree, idx)->size;
         }
 
         return;
     }
 
-    if(node->contentType == CT_NODES) {
-        node->centerOfMass.x = 0;
-        node->centerOfMass.y = 0;
-        node->centerOfMass.z = 0;
+    if(getNode(tree, idx)->contentType == CT_NODES) {
+        getNode(tree, idx)->centerOfMass.x = 0;
+        getNode(tree, idx)->centerOfMass.y = 0;
+        getNode(tree, idx)->centerOfMass.z = 0;
 
         node_idx_t children_start = get_node_children(idx);
         for(int i = 0; i < NODE_CHILD_COUNT; i++) {
             calc_node_center_of_mass(tree, children_start+i);
 
-            struct OctNode* childNode = getNode(tree, children_start+i);
-            node->centerOfMass.x += (childNode->centerOfMass.x * (float) childNode->size) / (float) node->size;
-            node->centerOfMass.y += (childNode->centerOfMass.y * (float) childNode->size) / (float) node->size;
-            node->centerOfMass.z += (childNode->centerOfMass.z * (float) childNode->size) / (float) node->size;
+            getNode(tree, idx)->centerOfMass.x += (getNode(tree, children_start+i)->centerOfMass.x * (float) getNode(tree, children_start+i)->size) / (float) getNode(tree, idx)->size;
+            getNode(tree, idx)->centerOfMass.y += (getNode(tree, children_start+i)->centerOfMass.y * (float) getNode(tree, children_start+i)->size) / (float) getNode(tree, idx)->size;
+            getNode(tree, idx)->centerOfMass.z += (getNode(tree, children_start+i)->centerOfMass.z * (float) getNode(tree, children_start+i)->size) / (float) getNode(tree, idx)->size;
         }
         return;
     }
@@ -303,25 +292,24 @@ void calc_node_center_of_mass(struct OctTree* tree, node_idx_t idx) {
 //region calc force on node
 bool calc_force_for_node(struct OctTree* tree, node_idx_t idx, struct Extents* ext, void* callback_arg) {
     struct Leaf* leaf = (struct Leaf*) callback_arg;
-    struct OctNode* node = getNode(tree, idx);
 
     coord_t s = ext->maxExt.x - ext->minExt.x;
     s = s > 0 ? s : -s;
 
-    coord_t d = dist(&node->centerOfMass, &leaf->pos);
+    coord_t d = dist(&getNode(tree, idx)->centerOfMass, &leaf->pos);
 
     if(s/d < SD_THRESHOLD) { // node is far enough away
 
-        coord_t f = (G*(node->size + 1))/(d*d);
-        Force fVec = vec_dir(&leaf->pos, &node->centerOfMass);
+        coord_t f = (G*(getNode(tree, idx)->size + 1))/(d*d);
+        Force fVec = vec_dir(&leaf->pos, &getNode(tree, idx)->centerOfMass);
         mult_scalar(&fVec, f);
 
         add(&leaf->force, &fVec);
 
         return false;
     } else { // node is too close
-        if(node->contentType == CT_LEAVES) {
-            for(leaf_idx_t i = 0; i < node->size; i++) {
+        if(getNode(tree, idx)->contentType == CT_LEAVES) {
+            for(leaf_idx_t i = 0; i < getNode(tree, idx)->size; i++) {
                 struct Leaf* otherLeaf = getLeaf(tree, idx, i);
                 coord_t d = dist(&leaf->pos, &otherLeaf->pos);
                 if(d == 0) continue;
@@ -363,27 +351,23 @@ void apply_velocity_on_leaf(struct OctTree* tree, struct Leaf* leaf) {
 
 //region rebalance
 bool rebalance_node(struct OctTree* tree, node_idx_t idx, struct Extents* ext, void* callback_arg) {
-    struct OctNode* node = getNode(tree, idx);
-
-    if(node->contentType == CT_LEAVES) {
-        for(node_idx_t i = node->size-1; ; i--) {
+    if(getNode(tree, idx)->contentType == CT_LEAVES) {
+        for(node_idx_t i = getNode(tree, idx)->size-1; ; i--) {
             struct Leaf* leaf = getLeaf(tree, idx, i);
             if(!pos_inside(ext, &leaf->pos)) {
-                leaf_idx_t leafIdx = node->leaves[i];
+                leaf_idx_t leafIdx = getNode(tree, idx)->leaves[i];
 
-                removeLeafFromNode(node, i);
+                removeLeafFromNode(getNode(tree, idx), i);
 
                 node_idx_t parentIdx = get_node_parent(idx);
                 while(true) {
-                    struct OctNode* parentNode = getNode(tree, parentIdx);
-                    parentNode->size--;
-                    if(parentNode->size == 0) setNodeEmpty(parentNode);
+                    getNode(tree, parentIdx)->size--;
+                    if(getNode(tree, parentIdx)->size == 0) setNodeEmpty(getNode(tree, parentIdx));
                     if(parentIdx == 0) break;
                     parentIdx = get_node_parent(parentIdx);
                 }
 
                 addLeaf(tree, leafIdx);
-                node = getNode(tree, idx);
             }
             if(i == 0) break;
         }
