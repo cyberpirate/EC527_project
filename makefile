@@ -14,7 +14,4 @@ main_debug: $(h_files) $(c_files) main.c
 test: $(h_files) $(c_files) test.c greatest.h
 	gcc -D DEBUG -ggdb -lm $(c_files) -std=gnu99 test.c greatest.h -o test
 
-output.csv: main
-	./main | tee output.csv
-
 all: main test main_debug
