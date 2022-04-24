@@ -16,7 +16,10 @@ void print_leaf_pos(struct OctTree* tree, struct Leaf* leaf) {
 }
 
 void set_leaf_pos(struct OctTree* tree, struct Leaf* leaf) {
-    leaf->pos = rand_pos();
+//    leaf->pos = rand_pos();
+    leaf->pos = rand_torus(TORUS_OUTER, TORUS_INNER);
+    leaf->velocity = vel_from_pos(&leaf->pos);
+    mult_scalar(&leaf->velocity, TORUS_VEL/UNIVERSE_SIZE);
 }
 
 int main(int argc, char *argv[])
@@ -43,6 +46,10 @@ int main(int argc, char *argv[])
 
 
     walk_leaves(tree, set_leaf_pos);
+//    fprintf(outputFile, "%d", 0);
+//    walk_leaves(tree, print_leaf_pos);
+//    fprintf(outputFile, "\n");
+//    return 0;
     add_leaves_to_tree(tree);
 
 

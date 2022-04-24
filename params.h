@@ -19,6 +19,9 @@ typedef double coord_t;
 #define MIN_NODE_SIZE 0.5
 #define DEPTH_LIMIT 9
 #define MAX_SCATTER 1
+#define TORUS_OUTER 75
+#define TORUS_INNER 25
+#define TORUS_VEL 0.25
 
 #define G (6.67E-11*1E8)
 #define nullptr 0

@@ -152,11 +152,11 @@ void scatterLeavesInNode(struct OctTree* tree, node_idx_t idx, struct Extents* e
     }
 }
 
-void setNodeToInternalNode(struct OctTree* tree, node_idx_t idx, struct Extents* ext) {
+bool setNodeToInternalNode(struct OctTree* tree, node_idx_t idx, struct Extents* ext) {
 
     if(tree->depth_count == DEPTH_LIMIT) {
-        scatterLeavesInNode(tree, idx, ext);
-        return;
+//        scatterLeavesInNode(tree, idx, ext);
+        return false;
     }
 
     node_idx_t size = getNode(tree, idx)->size;
@@ -171,6 +171,8 @@ void setNodeToInternalNode(struct OctTree* tree, node_idx_t idx, struct Extents*
         struct Extents childExt = *ext;
         addLeafToNode(tree, leaves[i], idx, &childExt);
     }
+
+    return true;
 }
 
 //endregion oct node operations
@@ -242,7 +244,7 @@ child_pos_idx_t get_pos_index(struct Extents* ext, Pos* pos) {
     return ret;
 }
 
-void addLeafToNode(struct OctTree* tree, leaf_idx_t leaf_idx, node_idx_t idx, struct Extents* ext) {
+bool addLeafToNode(struct OctTree* tree, leaf_idx_t leaf_idx, node_idx_t idx, struct Extents* ext) {
 
     depth_t idx_depth = get_depth_for_idx(idx);
     if(idx_depth >= tree->depth_count) {
@@ -259,25 +261,30 @@ void addLeafToNode(struct OctTree* tree, leaf_idx_t leaf_idx, node_idx_t idx, st
     if(getNode(tree, idx)->contentType == CT_LEAVES) {
         if(getNode(tree, idx)->size < LEAF_CHILD_COUNT) {
             addLeafToLeafNode(getNode(tree, idx), leaf_idx);
-            return;
+            return true;
         } else {
-            setNodeToInternalNode(tree, idx, ext);
-            if(getNode(tree, idx)->contentType != CT_NODES) {
-                // hit depth limit, node has scattered so add
-                if(getNode(tree, idx)->contentType == CT_EMPTY)
-                    setNodeToLeafNode(getNode(tree, idx));
-                addLeafToLeafNode(getNode(tree, idx), leaf_idx);
-                return;
+            if(!setNodeToInternalNode(tree, idx, ext)) {
+                return false;
             }
+//            if(getNode(tree, idx)->contentType != CT_NODES) {
+//                // hit depth limit, node has scattered so add
+//                if(getNode(tree, idx)->contentType == CT_EMPTY)
+//                    setNodeToLeafNode(getNode(tree, idx));
+//                addLeafToLeafNode(getNode(tree, idx), leaf_idx);
+//                return;
+//            }
         }
     }
 
     if(getNode(tree, idx)->contentType == CT_NODES) {
         child_pos_idx_t posIdx = get_pos_index(ext, leafPos);
         update_extents(ext, posIdx);
-        addLeafToNode(tree, leaf_idx, get_node_children(idx) + posIdx, ext);
-        getNode(tree, idx)->size++;
-        return;
+        if(addLeafToNode(tree, leaf_idx, get_node_children(idx) + posIdx, ext)) {
+            getNode(tree, idx)->size++;
+            return true;
+        }
+
+        return false;
     }
 
     dbgAssert(false);
@@ -387,26 +394,24 @@ void apply_velocity_on_leaf(struct OctTree* tree, struct Leaf* leaf) {
 
 //region rebalance
 bool rebalance_node(struct OctTree* tree, node_idx_t idx, struct Extents* ext, void* callback_arg) {
-    if(getNode(tree, idx)->contentType == CT_LEAVES) {
-        for(node_idx_t i = getNode(tree, idx)->size-1; ; i--) {
-            struct Leaf* leaf = getLeaf(tree, idx, i);
-            if(!pos_inside(ext, &leaf->pos)) {
-                leaf_idx_t leafIdx = getNode(tree, idx)->leaves[i];
+    for(node_idx_t i = getNode(tree, idx)->size-1; getNode(tree, idx)->contentType == CT_LEAVES; i--) {
+        struct Leaf* leaf = getLeaf(tree, idx, i);
+        if(!pos_inside(ext, &leaf->pos)) {
+            leaf_idx_t leafIdx = getNode(tree, idx)->leaves[i];
 
-                removeLeafFromNode(getNode(tree, idx), i);
+            removeLeafFromNode(getNode(tree, idx), i);
 
-                node_idx_t parentIdx = get_node_parent(idx);
-                while(true) {
-                    getNode(tree, parentIdx)->size--;
-                    if(getNode(tree, parentIdx)->size == 0) setNodeEmpty(getNode(tree, parentIdx));
-                    if(parentIdx == 0) break;
-                    parentIdx = get_node_parent(parentIdx);
-                }
-
-                addLeaf(tree, leafIdx);
+            node_idx_t parentIdx = get_node_parent(idx);
+            while(true) {
+                getNode(tree, parentIdx)->size--;
+                if(getNode(tree, parentIdx)->size == 0) setNodeEmpty(getNode(tree, parentIdx));
+                if(parentIdx == 0) break;
+                parentIdx = get_node_parent(parentIdx);
             }
-            if(i == 0) break;
+
+            addLeaf(tree, leafIdx);
         }
+        if(i == 0) break;
     }
 
     return true;
@@ -445,8 +450,13 @@ void add_leaves_to_tree(struct OctTree* tree) {
 }
 
 void addLeaf(struct OctTree* tree, leaf_idx_t leaf_idx) {
-    struct Extents ext = get_max_extents();
-    addLeafToNode(tree, leaf_idx, 0, &ext);
+    while(true) {
+        struct Extents ext = get_max_extents();
+        if(addLeafToNode(tree, leaf_idx, 0, &ext)) {
+            break;
+        }
+        tree->leaves[leaf_idx].pos = rand_pos();
+    }
 }
 
 void calc_center_of_mass(struct OctTree* tree) {

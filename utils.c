@@ -74,13 +74,13 @@ uint8_t clamp_coord_to_universe(coord_t* v) {
 
 void clamp_to_universe(Pos* pos, Velocity* vel) {
     if(clamp_coord_to_universe(&pos->x)) {
-        vel->x *= -1;
+        vel->x *= 0;
     }
     if(clamp_coord_to_universe(&pos->y)) {
-        vel->y *= -1;
+        vel->y *= 0;
     }
     if(clamp_coord_to_universe(&pos->z)) {
-        vel->z *= -1;
+        vel->z *= 0;
     }
 }
 
