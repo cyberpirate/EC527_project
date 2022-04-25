@@ -9,51 +9,30 @@
 
 #define PRINT_CALCULATING
 
-uint32_t check_node_size(struct OctNode* node) {
-    if(node->contentType == CT_EMPTY) return 0;
+FILE* outputFile;
 
-    if(node->contentType == CT_LEAVES) {
-        uint32_t size = 0;
+void print_leaf_pos(struct OctTree* tree, struct Leaf* leaf) {
+    fprintf(outputFile, ",%f,%f,%f", leaf->pos.x, leaf->pos.y, leaf->pos.z);
+}
 
-        for(int i = 0; i < LEAF_CHILDREN_NUM; i++) {
-            if(node->leaves[i] != nullptr) {
-                size++;
-            }
-        }
-
-        dbgAssert(size == node->size);
-        dbgAssert(node->size != 0);
-        return size;
-    }
-
-    if(node->contentType == CT_NODES) {
-        uint32_t size = 0;
-
-        for(int i = 0; i < NODE_CHILDREN_NUM; i++) {
-            size += check_node_size(node->nodes[i]);
-        }
-
-        dbgAssert(size == node->size);
-        dbgAssert(node->size != 0);
-        return size;
-    }
-
-    dbgAssert(0);
-    return -1;
+void set_leaf_pos(struct OctTree* tree, struct Leaf* leaf) {
+//    leaf->pos = rand_pos();
+    leaf->pos = rand_torus(TORUS_OUTER, TORUS_INNER);
+    leaf->velocity = vel_from_pos(&leaf->pos);
+    mult_scalar(&leaf->velocity, TORUS_VEL/UNIVERSE_SIZE);
 }
 
 int main(int argc, char *argv[])
 {
     reset_rand();
 
-    struct OctNode* root = create_oct_node();
-    struct Leaf* leaves[POINT_COUNT];
+    struct OctTree* tree = create_tree(POINT_COUNT);
     double times[ITERS];
     struct timespec time_start, time_stop;
     struct timespec tot_time_start, tot_time_stop;
     clock_gettime(CLOCK_REALTIME, &tot_time_start);
 
-    FILE* outputFile = fopen("output.csv", "w");
+    outputFile = fopen("output.csv", "w");
 
     if(outputFile == nullptr) {
         printf("Error, can't open output.csv\n");
@@ -66,12 +45,12 @@ int main(int argc, char *argv[])
     fprintf(outputFile, "\n");
 
 
-    for(int i = 0; i < POINT_COUNT; i++) {
-        leaves[i] = create_leaf();
-        leaves[i]->pos = rand_pos();
-        add_leaf(root, leaves[i]);
-        check_node_size(root);
-    }
+    walk_leaves(tree, set_leaf_pos);
+//    fprintf(outputFile, "%d", 0);
+//    walk_leaves(tree, print_leaf_pos);
+//    fprintf(outputFile, "\n");
+//    return 0;
+    add_leaves_to_tree(tree);
 
 
 #ifdef PRINT_CALCULATING
@@ -79,23 +58,16 @@ int main(int argc, char *argv[])
 #endif
     for(int i = 0; i < ITERS; i++) {
         clock_gettime(CLOCK_REALTIME, &time_start);
-        calc_center_of_mass(root);
-        check_node_size(root);
-        calc_force(root);
-        check_node_size(root);
-        apply_force(root);
-        check_node_size(root);
-        apply_velocity(root);
-        check_node_size(root);
-        rebalance(root);
+        calc_center_of_mass(tree);
+        calc_force(tree);
+        apply_force(tree);
+        apply_velocity(tree);
+        rebalance(tree);
         clock_gettime(CLOCK_REALTIME, &time_stop);
         times[i] = interval(time_start, time_stop);
 
-        check_node_size(root);
-
         fprintf(outputFile, "%d", i);
-        for(int j = 0; j < POINT_COUNT; j++)
-            fprintf(outputFile, ",%f,%f,%f", leaves[j]->pos.x, leaves[j]->pos.y, leaves[j]->pos.z);
+        walk_leaves(tree, print_leaf_pos);
         fprintf(outputFile, "\n");
 
 #ifdef PRINT_CALCULATING
@@ -109,14 +81,8 @@ int main(int argc, char *argv[])
     printf("\rDone!\n");
 #endif
 
-    for(int i = 0; i < POINT_COUNT; i++) {
-        remove_leaf(root, leaves[i]);
-        check_node_size(root);
-        destroy_leaf(leaves[i]);
-    }
-
     fclose(outputFile);
-    destroy_oct_node(root);
+    destroy_tree(tree);
 
     clock_gettime(CLOCK_REALTIME, &tot_time_stop);
     double totalTime = interval(tot_time_start, tot_time_stop);

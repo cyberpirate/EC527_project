@@ -8,13 +8,18 @@
 #include <stdint-gcc.h>
 #include "params.h"
 #include "utils.h"
+#include <stdbool.h>
 
 #define CT_EMPTY  0
 #define CT_LEAVES 1
 #define CT_NODES  2
 
-#define NODE_CHILDREN_NUM 8
-#define LEAF_CHILDREN_NUM 8
+#define NODE_CHILD_COUNT 8
+#define LEAF_CHILD_COUNT 4
+
+typedef uint8_t depth_t;
+typedef uint32_t node_idx_t;
+typedef uint32_t leaf_idx_t;
 
 struct Leaf {
     Pos pos;
@@ -24,109 +29,121 @@ struct Leaf {
 
 struct OctNode {
     uint8_t contentType;
-    uint16_t size;
-    struct OctNode* parent;
-    Pos maxExt;
-    Pos minExt;
+    node_idx_t size;
     Pos centerOfMass;
-    union {
-        struct Leaf* leaves[LEAF_CHILDREN_NUM];
-        struct OctNode* nodes[NODE_CHILDREN_NUM];
-    };
+    leaf_idx_t leaves[LEAF_CHILD_COUNT];
+};
+
+struct OctTree {
+    struct Leaf* leaves;
+    leaf_idx_t leaf_count;
+
+//    struct OctNode* children;
+//    node_idx_t elmsCount;
+
+    struct OctNode** depth;
+    depth_t depth_count;
 };
 
 /**
- * Find the octant of pos relative to center.
- * The return is three least significant bits, set to 1 if positive
- * as follows
- * +x | +y | +z
- * @param minExt
- * @param maxExt
- * @param pos
+ * Create empty tree
  * @return
  */
-uint8_t get_pos_index(Pos* minExt, Pos* maxExt, Pos* pos);
+struct OctTree* create_tree(leaf_idx_t leaf_count);
 
 /**
- * Create an empty node
- * @return
+ * Destroy tree
+ * @param tree
  */
-struct OctNode* create_oct_node();
+void destroy_tree(struct OctTree* tree);
 
 /**
- * Release node and its children
- * @param node
+ * Add leaves to tree after initialization
  */
-void destroy_oct_node(struct OctNode* node);
+void add_leaves_to_tree(struct OctTree* tree);
 
 /**
- * Explode from leaves into nodes
- * @param node
- */
-void explode_node(struct OctNode* node);
-
-/**
- * Create an empty leaf
- * @return
- */
-struct Leaf* create_leaf();
-
-/**
- * Release leaf
+ * Add a leaf to the tree
+ * @param tree
  * @param leaf
  */
-void destroy_leaf(struct Leaf* leaf);
+void addLeaf(struct OctTree* tree, leaf_idx_t leaf_idx);
 
 /**
- * Add a leaf to the node or its children
- * @param node
- * @param leaf
+ * Calculate center of mass for all internal nodes
+ * @param tree
  */
-void add_leaf(struct OctNode* node, struct Leaf* leaf);
+void calc_center_of_mass(struct OctTree* tree);
 
 /**
- * Remove a leaf from a node
- * @param node
- * @param leaf
+ * Calculate the force on the leaves
+ * @param tree
  */
-void remove_leaf(struct OctNode* node, struct Leaf* leaf);
+void calc_force(struct OctTree* tree);
 
 /**
- * Check if leaf is inside node extents
- * @param node
- * @param leaf
- * @return
+ * Apply calculated force
+ * @param tree
  */
-uint8_t leaf_inside(struct OctNode* node, struct Leaf* leaf);
+void apply_force(struct OctTree* tree);
 
 /**
- * Calculate the center of mass for a node
- * @param node
+ * Apply calculated force
+ * @param tree
  */
-void calc_center_of_mass(struct OctNode* node);
+void apply_velocity(struct OctTree* tree);
 
 /**
- * Calculate the forces for all leaves in the tree
- * @param node
+ * Rebalance tree by finding out of place nodes and moving them
+ * @param tree
  */
-void calc_force(struct OctNode* node);
+void rebalance(struct OctTree* tree);
 
 /**
- * Apply force calculated across all leaves
- * @param node
+ * Run function on all leaves
+ * @param tree
+ * @param process_leaf
  */
-void apply_force(struct OctNode* node);
+void walk_leaves(struct OctTree* tree, void (*process_leaf)(struct OctTree* tree, struct Leaf* leaf));
 
-/**
- * Apply velocity calculated across all leaves
- * @param node
- */
-void apply_velocity(struct OctNode* node);
+//region private functions
 
-/**
- * Check if any leaves are out of place and fix them
- * @param node
- */
-void rebalance(struct OctNode* node);
+struct Extents {
+    Pos minExt;
+    Pos maxExt;
+    Pos center;
+};
+
+typedef uint8_t child_pos_idx_t;
+
+struct Leaf* getLeaf(struct OctTree* tree, node_idx_t node_idx, child_pos_idx_t leaf_idx);
+struct OctNode* getNode(struct OctTree* tree, node_idx_t node_idx);
+node_idx_t depth_size(depth_t depth);
+node_idx_t array_size_for_depth(depth_t depth);
+node_idx_t idx_start_for_depth(depth_t depth);
+depth_t get_depth_for_idx(node_idx_t idx);
+node_idx_t get_node_children(node_idx_t idx);
+node_idx_t get_node_parent(node_idx_t idx);
+void set_tree_depth(struct OctTree* tree, depth_t depth_count);
+void setNodeEmpty(struct OctNode* node);
+void setNodeToLeafNode(struct OctNode* node);
+void addLeafToLeafNode(struct OctNode* node, leaf_idx_t idx);
+void removeLeafFromNode(struct OctNode* node, child_pos_idx_t idx);
+void scatterLeavesInNode(struct OctTree* tree, node_idx_t idx, struct Extents* ext);
+bool setNodeToInternalNode(struct OctTree* tree, node_idx_t idx, struct Extents* ext);
+struct Extents get_max_extents();
+bool pos_inside(struct Extents* ext, Pos* pos);
+void update_extents(struct Extents* ext, child_pos_idx_t pos_index);
+child_pos_idx_t get_pos_index(struct Extents* ext, Pos* pos);
+bool addLeafToNode(struct OctTree* tree, leaf_idx_t leaf_idx, node_idx_t idx, struct Extents* ext);
+void calc_node_center_of_mass(struct OctTree* tree, node_idx_t idx);
+bool calc_force_for_node(struct OctTree* tree, node_idx_t idx, struct Extents* ext, void* callback_arg);
+void calc_force_on_leaf(struct OctTree* tree, struct Leaf* leaf);
+void apply_force_on_leaf(struct OctTree* tree, struct Leaf* leaf);
+void apply_velocity_on_leaf(struct OctTree* tree, struct Leaf* leaf);
+bool rebalance_node(struct OctTree* tree, node_idx_t idx, struct Extents* ext, void* callback_arg);
+
+
+//endregion private functions
 
 #endif //EC527_PROJECT_OCT_TREE_H
