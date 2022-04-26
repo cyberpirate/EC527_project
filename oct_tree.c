@@ -1,5 +1,6 @@
 //
 // Created by cyberpirate on 3/30/22.
+// Modified by Alex Johnson on 4/25/22.
 //
 
 #include "oct_tree.h"
@@ -7,8 +8,26 @@
 #include <malloc.h>
 #include <math.h>
 #include <string.h>
+#include <pthread.h> // For multithreading
 
 //region idx tree traversal
+
+struct OctTree* global_tree;
+
+void *walk_leaves_calc_force_threaded(void *ptr)
+{
+    walk_leaves(global_tree, calc_force_on_leaf);
+}
+
+void *walk_leaves_apply_force_threaded(void *ptr)
+{
+    walk_leaves(global_tree, apply_force_on_leaf);
+}
+
+void *walk_leaves_apply_velocity_threaded(void *ptr)
+{
+    walk_leaves(global_tree, apply_velocity_on_leaf);
+}
 
 struct Leaf* getLeaf(struct OctTree* tree, node_idx_t node_idx, child_pos_idx_t leaf_idx) {
     dbgAssert(getNode(tree, node_idx)->contentType == CT_LEAVES);
@@ -89,6 +108,7 @@ void set_tree_depth(struct OctTree* tree, depth_t depth_count) {
 }
 
 void walk_tree(struct OctTree* tree, node_idx_t idx, struct Extents* ext, bool (*process_callback)(struct OctTree* tree, node_idx_t idx, struct Extents* ext, void* callbackArg), void* callback_arg) {
+    global_tree = tree;
     if(getNode(tree, idx)->contentType == CT_EMPTY) return;
 
     if(!process_callback(tree, idx, ext, callback_arg)) return;
@@ -464,15 +484,45 @@ void calc_center_of_mass(struct OctTree* tree) {
 }
 
 void calc_force(struct OctTree* tree) {
-    walk_leaves(tree, calc_force_on_leaf);
+    pthread_t thread_id[ITERS];
+
+    global_tree = tree;
+
+    for (int i = 0; i < ITERS; i++)
+        pthread_create(&thread_id[i], NULL, walk_leaves_calc_force_threaded, NULL);
+
+    for (int i = 0; i < ITERS; i++)
+        pthread_join(thread_id[i], NULL);
+
+    //walk_leaves(tree, calc_force_on_leaf);
 }
 
 void apply_force(struct OctTree* tree) {
-    walk_leaves(tree, apply_force_on_leaf);
+    pthread_t thread_id[ITERS];
+
+    global_tree = tree;
+
+    for (int i = 0; i < ITERS; i++)
+        pthread_create(&thread_id[i], NULL, walk_leaves_apply_force_threaded, NULL);
+
+    for (int i = 0; i < ITERS; i++)
+        pthread_join(thread_id[i], NULL);
+
+    //walk_leaves(tree, apply_force_on_leaf);
 }
 
 void apply_velocity(struct OctTree* tree) {
-    walk_leaves(tree, apply_velocity_on_leaf);
+    pthread_t thread_id[ITERS];
+
+    global_tree = tree;
+
+    for (int i = 0; i < ITERS; i++)
+        pthread_create(&thread_id[i], NULL, walk_leaves_apply_velocity_threaded, NULL);
+
+    for (int i = 0; i < ITERS; i++)
+        pthread_join(thread_id[i], NULL);
+
+    //walk_leaves(tree, apply_velocity_on_leaf);
 }
 
 void rebalance(struct OctTree* tree) {
