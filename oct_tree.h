@@ -21,10 +21,6 @@ typedef uint8_t depth_t;
 typedef uint32_t node_idx_t;
 typedef uint32_t leaf_idx_t;
 
-void *walk_leaves_calc_force_threaded(void *ptr);
-void *walk_leaves_apply_force_threaded(void *ptr);
-void *walk_leaves_apply_velocity_threaded(void *ptr);
-
 struct Leaf {
     Pos pos;
     Force force;
@@ -102,6 +98,9 @@ void apply_velocity(struct OctTree* tree);
  * @param tree
  */
 void rebalance(struct OctTree* tree);
+
+void process_leaf(struct OctTree* tree, struct Leaf* leaf);
+void *process_leaf_thread(void *ptr);
 
 /**
  * Run function on all leaves
