@@ -138,24 +138,9 @@ void removeLeafFromNode(struct OctNode* node, child_pos_idx_t idx) {
     }
 }
 
-void scatterLeavesInNode(struct OctTree* tree, node_idx_t idx, struct Extents* ext) {
-    dbgAssert(getNode(tree, idx)->contentType == CT_LEAVES);
-
-    child_pos_idx_t sizeTarget = LEAF_CHILD_COUNT - MAX_SCATTER;
-
-    while(true) {
-        rebalance_node(tree, idx, ext, nullptr);
-
-        if(getNode(tree, idx)->size <= sizeTarget) break;
-
-        getLeaf(tree, idx, 0)->pos = rand_pos();
-    }
-}
-
 bool setNodeToInternalNode(struct OctTree* tree, node_idx_t idx, struct Extents* ext) {
 
     if(tree->depth_count == DEPTH_LIMIT) {
-//        scatterLeavesInNode(tree, idx, ext);
         return false;
     }
 
@@ -266,13 +251,6 @@ bool addLeafToNode(struct OctTree* tree, leaf_idx_t leaf_idx, node_idx_t idx, st
             if(!setNodeToInternalNode(tree, idx, ext)) {
                 return false;
             }
-//            if(getNode(tree, idx)->contentType != CT_NODES) {
-//                // hit depth limit, node has scattered so add
-//                if(getNode(tree, idx)->contentType == CT_EMPTY)
-//                    setNodeToLeafNode(getNode(tree, idx));
-//                addLeafToLeafNode(getNode(tree, idx), leaf_idx);
-//                return;
-//            }
         }
     }
 
@@ -289,6 +267,46 @@ bool addLeafToNode(struct OctTree* tree, leaf_idx_t leaf_idx, node_idx_t idx, st
 
     dbgAssert(false);
 }
+
+bool addLeafToSmallestNode(struct OctTree* tree, leaf_idx_t leaf_idx, node_idx_t idx, struct Extents* ext) {
+
+    depth_t idx_depth = get_depth_for_idx(idx);
+    if(idx_depth >= tree->depth_count) {
+        set_tree_depth(tree, idx_depth + 1);
+    }
+
+    Pos* leafPos = &tree->leaves[leaf_idx].pos;
+//    dbgAssert(pos_inside(ext, leafPos));
+
+    if(getNode(tree, idx)->contentType == CT_EMPTY) {
+        setNodeToLeafNode(getNode(tree, idx));
+    }
+
+    if(getNode(tree, idx)->contentType == CT_LEAVES) {
+        if(getNode(tree, idx)->size < LEAF_CHILD_COUNT) {
+            addLeafToLeafNode(getNode(tree, idx), leaf_idx);
+            return true;
+        } else {
+            if(!setNodeToInternalNode(tree, idx, ext)) {
+                return false;
+            }
+        }
+    }
+
+    if(getNode(tree, idx)->contentType == CT_NODES) {
+        child_pos_idx_t posIdx = get_pos_index(ext, leafPos);
+        update_extents(ext, posIdx);
+        if(addLeafToNode(tree, leaf_idx, get_node_children(idx) + posIdx, ext)) {
+            getNode(tree, idx)->size++;
+            return true;
+        }
+
+        return false;
+    }
+
+    dbgAssert(false);
+}
+
 //endregion add leaf
 
 //region center of mass
@@ -422,6 +440,8 @@ bool rebalance_node(struct OctTree* tree, node_idx_t idx, struct Extents* ext, v
 
 struct OctTree* create_tree(leaf_idx_t leaf_count) {
     struct OctTree* tree = (struct OctTree*) malloc(sizeof(struct OctTree));
+
+    dbgAssert(leaf_count < (depth_size(DEPTH_LIMIT)*LEAF_CHILD_COUNT));
 
     tree->leaves = calloc(leaf_count, sizeof(struct Leaf));
     memset(tree->leaves, 0, leaf_count*sizeof(struct Leaf));

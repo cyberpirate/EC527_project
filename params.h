@@ -10,7 +10,7 @@ typedef double coord_t;
 #define UNIVERSE_SIZE 100
 #define SD_THRESHOLD 0.5
 #define RAND_SEED 506
-#define POINT_COUNT 1000
+#define POINT_COUNT 100000
 #define ITERS 1000
 #define FORCE_MULT 0.5
 #define VELOCITY_MULT 1

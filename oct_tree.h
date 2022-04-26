@@ -15,7 +15,7 @@
 #define CT_NODES  2
 
 #define NODE_CHILD_COUNT 8
-#define LEAF_CHILD_COUNT 4
+#define LEAF_CHILD_COUNT 10
 
 typedef uint8_t depth_t;
 typedef uint32_t node_idx_t;
@@ -129,7 +129,6 @@ void setNodeEmpty(struct OctNode* node);
 void setNodeToLeafNode(struct OctNode* node);
 void addLeafToLeafNode(struct OctNode* node, leaf_idx_t idx);
 void removeLeafFromNode(struct OctNode* node, child_pos_idx_t idx);
-void scatterLeavesInNode(struct OctTree* tree, node_idx_t idx, struct Extents* ext);
 bool setNodeToInternalNode(struct OctTree* tree, node_idx_t idx, struct Extents* ext);
 struct Extents get_max_extents();
 bool pos_inside(struct Extents* ext, Pos* pos);
