@@ -292,7 +292,7 @@ TEST oct_tree_test(void) {
 }
 
 TEST scatter_test(void) {
-    node_idx_t leafNum = 10;
+    node_idx_t leafNum = LEAF_CHILD_COUNT*20;
     struct OctTree* tree = create_tree(leafNum);
 
     reset_rand();
@@ -315,8 +315,8 @@ GREATEST_MAIN_DEFS();
 int main(int argc, char **argv) {
     GREATEST_MAIN_BEGIN();      /* command-line arguments, initialization. */
 
-    RUN_TEST(node_util_function_tests);
-    RUN_TEST(oct_tree_test);
+//    RUN_TEST(node_util_function_tests);
+//    RUN_TEST(oct_tree_test);
     RUN_TEST(scatter_test);
 
 //    RUN_TEST(rand_pos_test);

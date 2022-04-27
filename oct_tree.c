@@ -268,15 +268,23 @@ bool addLeafToNode(struct OctTree* tree, leaf_idx_t leaf_idx, node_idx_t idx, st
     dbgAssert(false);
 }
 
-bool addLeafToSmallestNode(struct OctTree* tree, leaf_idx_t leaf_idx, node_idx_t idx, struct Extents* ext) {
+Pos rand_inside(struct Extents* ext) {
+    Pos ret;
 
-    depth_t idx_depth = get_depth_for_idx(idx);
-    if(idx_depth >= tree->depth_count) {
-        set_tree_depth(tree, idx_depth + 1);
-    }
+    coord_t xDiff = ext->maxExt.x - ext->minExt.x;
+    coord_t yDiff = ext->maxExt.y - ext->minExt.y;
+    coord_t zDiff = ext->maxExt.z - ext->minExt.z;
 
-    Pos* leafPos = &tree->leaves[leaf_idx].pos;
-//    dbgAssert(pos_inside(ext, leafPos));
+    ret.x = rand_value(xDiff/2) + (ext->minExt.x + xDiff/2);
+    ret.y = rand_value(yDiff/2) + (ext->minExt.y + yDiff/2);
+    ret.z = rand_value(zDiff/2) + (ext->minExt.z + zDiff/2);
+
+    return ret;
+}
+
+void addLeafToSmallestNode(struct OctTree* tree, leaf_idx_t leaf_idx, node_idx_t idx, struct Extents* ext) {
+
+    dbgAssert(get_depth_for_idx(idx) < tree->depth_count);
 
     if(getNode(tree, idx)->contentType == CT_EMPTY) {
         setNodeToLeafNode(getNode(tree, idx));
@@ -284,24 +292,33 @@ bool addLeafToSmallestNode(struct OctTree* tree, leaf_idx_t leaf_idx, node_idx_t
 
     if(getNode(tree, idx)->contentType == CT_LEAVES) {
         if(getNode(tree, idx)->size < LEAF_CHILD_COUNT) {
+            tree->leaves[leaf_idx].pos = rand_inside(ext);
             addLeafToLeafNode(getNode(tree, idx), leaf_idx);
-            return true;
+            return;
         } else {
-            if(!setNodeToInternalNode(tree, idx, ext)) {
-                return false;
-            }
+            bool didExpand = setNodeToInternalNode(tree, idx, ext);
+            dbgAssert(!didExpand);
         }
+        return;
     }
 
     if(getNode(tree, idx)->contentType == CT_NODES) {
-        child_pos_idx_t posIdx = get_pos_index(ext, leafPos);
-        update_extents(ext, posIdx);
-        if(addLeafToNode(tree, leaf_idx, get_node_children(idx) + posIdx, ext)) {
-            getNode(tree, idx)->size++;
-            return true;
+        node_idx_t childStart = get_node_children(idx);
+
+        child_pos_idx_t smallest = 0;
+        node_idx_t smallestSize = getNode(tree, childStart)->size;
+
+        for(child_pos_idx_t i = 1; i < NODE_CHILD_COUNT; i++) {
+            if(getNode(tree, childStart+i)->size < smallestSize) {
+                smallest = i;
+                smallestSize = getNode(tree, childStart+i)->size;
+            }
         }
 
-        return false;
+        update_extents(ext, smallest);
+        addLeafToSmallestNode(tree, leaf_idx, childStart+smallest, ext);
+        getNode(tree, idx)->size++;
+        return;
     }
 
     dbgAssert(false);
@@ -470,12 +487,10 @@ void add_leaves_to_tree(struct OctTree* tree) {
 }
 
 void addLeaf(struct OctTree* tree, leaf_idx_t leaf_idx) {
-    while(true) {
-        struct Extents ext = get_max_extents();
-        if(addLeafToNode(tree, leaf_idx, 0, &ext)) {
-            break;
-        }
-        tree->leaves[leaf_idx].pos = rand_pos();
+    struct Extents ext = get_max_extents();
+    if(!addLeafToNode(tree, leaf_idx, 0, &ext)) {
+        ext = get_max_extents();
+        addLeafToSmallestNode(tree, leaf_idx, 0, &ext);
     }
 }
 
