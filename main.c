@@ -7,6 +7,12 @@
 #include "rand_gen.h"
 #include "utils.h"
 
+#ifdef DEBUG
+#define PROFILE
+#endif
+
+#include "profiler.h"
+
 #define PRINT_CALCULATING
 
 FILE* outputFile;
@@ -25,6 +31,12 @@ void set_leaf_pos(struct OctTree* tree, struct Leaf* leaf) {
 int main(int argc, char *argv[])
 {
     reset_rand();
+
+    init_profile(calc_center_of_mass_profile);
+    init_profile(calc_force_profile);
+    init_profile(apply_force_profile);
+    init_profile(apply_velocity_profile);
+    init_profile(rebalance_profile);
 
     struct OctTree* tree = create_tree(POINT_COUNT);
     double times[ITERS];
@@ -58,11 +70,14 @@ int main(int argc, char *argv[])
 #endif
     for(int i = 0; i < ITERS; i++) {
         clock_gettime(CLOCK_REALTIME, &time_start);
-        calc_center_of_mass(tree);
-        calc_force(tree);
-        apply_force(tree);
-        apply_velocity(tree);
-        rebalance(tree);
+
+        measure(calc_center_of_mass_profile, calc_center_of_mass(tree), ITERS);
+        measure(calc_center_of_mass_profile, calc_center_of_mass(tree), ITERS);
+        measure(calc_force_profile, calc_force(tree), ITERS);
+        measure(apply_force_profile, apply_force(tree), ITERS);
+        measure(apply_velocity_profile, apply_velocity(tree), ITERS);
+        measure(rebalance_profile, rebalance(tree), ITERS);
+
         clock_gettime(CLOCK_REALTIME, &time_stop);
         times[i] = interval(time_start, time_stop);
 
@@ -95,6 +110,12 @@ int main(int argc, char *argv[])
     printf("calc  time: %.2f\n", time);
     printf("total time: %.2f\n", totalTime);
     printf("over  time: %.2f\n", totalTime - time);
+
+    print_profile(calc_center_of_mass_profile);
+    print_profile(calc_force_profile);
+    print_profile(apply_force_profile);
+    print_profile(apply_velocity_profile);
+    print_profile(rebalance_profile);
 
     return 0;
 }
