@@ -354,7 +354,7 @@ void calc_node_center_of_mass(struct OctTree* tree, node_idx_t idx) {
 
         node_idx_t children_start = get_node_children(idx);
         for(int i = 0; i < NODE_CHILD_COUNT; i++) {
-            calc_node_center_of_mass(tree, children_start+i);
+//            calc_node_center_of_mass(tree, children_start+i);
 
             getNode(tree, idx)->centerOfMass.x += (getNode(tree, children_start+i)->centerOfMass.x * (float) getNode(tree, children_start+i)->size) / (float) getNode(tree, idx)->size;
             getNode(tree, idx)->centerOfMass.y += (getNode(tree, children_start+i)->centerOfMass.y * (float) getNode(tree, children_start+i)->size) / (float) getNode(tree, idx)->size;
@@ -364,6 +364,77 @@ void calc_node_center_of_mass(struct OctTree* tree, node_idx_t idx) {
     }
 
     dbgAssert(false);
+}
+
+struct DepthThreadArgs {
+    uint8_t thread_id;
+    struct OctTree* tree;
+    depth_t depth;
+};
+
+node_idx_t get_node_children_by_level(node_idx_t idx, depth_t level) {
+
+    for(int i = 0; i < level; i++) {
+        idx = get_node_children(idx);
+    }
+
+    return idx;
+}
+
+node_idx_t find_next_non_empty_idx(struct OctTree* tree, node_idx_t idx) {
+    depth_t level = 0;
+    node_idx_t width = 1;
+
+    node_idx_t ret = idx;
+
+    while(idx != 0) {
+        ret = get_node_children_by_level(idx, level) + width;
+
+        if(getNode(tree, idx)->contentType != CT_EMPTY) break;
+
+        level++;
+        width *= NODE_CHILD_COUNT;
+        idx = get_node_parent(idx);
+    }
+
+    return ret;
+}
+
+void* calc_depth_center_of_mass_worker(void* thread_args) {
+
+    struct DepthThreadArgs* args = (struct DepthThreadArgs*) thread_args;
+
+    node_idx_t start = idx_start_for_depth(args->depth);
+    node_idx_t stop = idx_start_for_depth(args->depth+1);
+
+    for(node_idx_t idx = start + args->thread_id; idx < stop; idx += THREAD_COUNT) {
+
+        if(getNode(args->tree, idx)->contentType == CT_EMPTY) {
+            node_idx_t next_non_empty = find_next_non_empty_idx(args->tree, idx);
+            node_idx_t diff = next_non_empty - idx;
+            idx += (diff/THREAD_COUNT) * THREAD_COUNT;
+            continue;
+        }
+
+        calc_node_center_of_mass(args->tree, idx);
+    }
+
+    return 0;
+}
+
+void calc_depth_center_of_mass(struct OctTree* tree, depth_t depth) {
+    pthread_t threads[THREAD_COUNT];
+    struct DepthThreadArgs args[THREAD_COUNT];
+
+    for(uint8_t thread_id = 0; thread_id < THREAD_COUNT; thread_id++) {
+        args[thread_id].thread_id = thread_id;
+        args[thread_id].tree = tree;
+        args[thread_id].depth = depth;
+        pthread_create(&threads[thread_id], NULL, &calc_depth_center_of_mass_worker, &args[thread_id]);
+    }
+
+    for(uint8_t thread_id = 0; thread_id < THREAD_COUNT; thread_id++)
+        pthread_join(threads[thread_id], NULL);
 }
 
 //endregion center of mass
@@ -496,7 +567,13 @@ void addLeaf(struct OctTree* tree, leaf_idx_t leaf_idx) {
 }
 
 void calc_center_of_mass(struct OctTree* tree) {
-    calc_node_center_of_mass(tree, 0);
+    depth_t depth = tree->depth_count-1;
+
+    while(true) {
+        calc_depth_center_of_mass(tree, depth);
+        if(depth == 0) break;
+        depth--;
+    }
 }
 
 void calc_force(struct OctTree* tree) {
