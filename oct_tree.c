@@ -7,6 +7,7 @@
 #include <malloc.h>
 #include <math.h>
 #include <string.h>
+#include <pthread.h>
 
 //region idx tree traversal
 
@@ -515,8 +516,46 @@ void rebalance(struct OctTree* tree) {
     walk_tree(tree, 0, &ext, rebalance_node, nullptr);
 }
 
-void walk_leaves(struct OctTree* tree, void (*process_leaf)(struct OctTree* tree, struct Leaf* leaf)) {
-    for(leaf_idx_t i = 0; i < tree->leaf_count; i++) {
-        process_leaf(tree, &tree->leaves[i]);
+struct LeafThreadArgs {
+    uint8_t thread_id;
+    struct OctTree* tree;
+    void (*process_leaf)(struct OctTree* tree, struct Leaf* leaf);
+};
+
+void* walk_leaves_worker(void* thread_args) {
+
+    struct LeafThreadArgs* args = (struct LeafThreadArgs*) thread_args;
+    leaf_idx_t leaf_proc_lim = (args->tree->leaf_count/THREAD_COUNT)+1;
+
+    leaf_idx_t start = leaf_proc_lim*args->thread_id;
+    leaf_idx_t stop = leaf_proc_lim*(args->thread_id+1);
+
+    if(stop > args->tree->leaf_count)
+        stop = args->tree->leaf_count;
+
+    for(leaf_idx_t i = start; i < stop; i++) {
+        args->process_leaf(args->tree, &args->tree->leaves[i]);
     }
+
+    return 0;
+}
+
+void walk_leaves(struct OctTree* tree, void (*process_leaf)(struct OctTree* tree, struct Leaf* leaf)) {
+
+    pthread_t threads[THREAD_COUNT];
+    struct LeafThreadArgs args[THREAD_COUNT];
+
+    for(uint8_t thread_id = 0; thread_id < THREAD_COUNT; thread_id++) {
+        args[thread_id].thread_id = thread_id;
+        args[thread_id].tree = tree;
+        args[thread_id].process_leaf = process_leaf;
+        pthread_create(&threads[thread_id], NULL, &walk_leaves_worker, &args[thread_id]);
+    }
+
+    for(uint8_t thread_id = 0; thread_id < THREAD_COUNT; thread_id++)
+        pthread_join(threads[thread_id], NULL);
+
+//    for(leaf_idx_t i = 0; i < tree->leaf_count; i++) {
+//        process_leaf(tree, &tree->leaves[i]);
+//    }
 }
