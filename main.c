@@ -3,7 +3,8 @@
 #include <bits/time.h>
 #include <time.h>
 #include "params.h"
-#include "oct_tree.h"
+// #include "oct_tree.h"
+#include "oct_tree_cuda.cuh"
 #include "rand_gen.h"
 #include "utils.h"
 
