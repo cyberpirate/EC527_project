@@ -460,7 +460,8 @@ struct OctTree* create_tree(leaf_idx_t leaf_count) {
 
     dbgAssert(leaf_count < (depth_size(DEPTH_LIMIT)*LEAF_CHILD_COUNT));
 
-    tree->leaves = calloc(leaf_count, sizeof(struct Leaf));
+//    tree->leaves = calloc(leaf_count, sizeof(struct Leaf));
+    posix_memalign(&tree->leaves, 64, leaf_count*sizeof(struct Leaf));
     memset(tree->leaves, 0, leaf_count*sizeof(struct Leaf));
     tree->leaf_count = leaf_count;
 

@@ -7,27 +7,31 @@
 #include <stdio.h>
 
 void set(struct Vec* vec, coord_t v) {
-    vec->x = v;
-    vec->y = v;
-    vec->z = v;
+    vec->v = _mm256_set1_pd(v);
+//    vec->x = v;
+//    vec->y = v;
+//    vec->z = v;
 }
 
 void add(struct Vec* v1, struct Vec* v2) {
-    v1->x += v2->x;
-    v1->y += v2->y;
-    v1->z += v2->z;
+    v1->v = _mm256_add_pd(v1->v, v2->v);
+//    v1->x += v2->x;
+//    v1->y += v2->y;
+//    v1->z += v2->z;
 }
 
 void sub(struct Vec* v1, struct Vec* v2) {
-    v1->x -= v2->x;
-    v1->y -= v2->y;
-    v1->z -= v2->z;
+    v1->v = _mm256_sub_pd(v1->v, v2->v);
+//    v1->x -= v2->x;
+//    v1->y -= v2->y;
+//    v1->z -= v2->z;
 }
 
 void mult_scalar(struct Vec* vec, coord_t v) {
-    vec->x *= v;
-    vec->y *= v;
-    vec->z *= v;
+    vec->v = _mm256_mul_pd(vec->v, _mm256_set1_pd(v));
+//    vec->x *= v;
+//    vec->y *= v;
+//    vec->z *= v;
 }
 
 coord_t dist(struct Vec* p1, struct Vec* p2) {
@@ -37,11 +41,14 @@ coord_t dist(struct Vec* p1, struct Vec* p2) {
 }
 
 coord_t vec_len(struct Vec* vec) {
-    return sqrt(
-        vec->x*vec->x +
-        vec->y*vec->y +
-        vec->z*vec->z
-    );
+    struct Vec v = *vec;
+    v.v = _mm256_mul_pd(v.v, v.v);
+    return sqrt(v.x + v.y + v.z);
+//    return sqrt(
+//        vec->x*vec->x +
+//        vec->y*vec->y +
+//        vec->z*vec->z
+//    );
 }
 
 void norm(struct Vec* vec) {
