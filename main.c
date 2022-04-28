@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
         times[i] = interval(time_start, time_stop);
 
         fprintf(outputFile, "%d", i);
-        walk_leaves(tree, print_leaf_pos);
+        walk_leaves_serial(tree, print_leaf_pos);
         fprintf(outputFile, "\n");
 
 #ifdef PRINT_CALCULATING
