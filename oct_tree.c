@@ -329,6 +329,16 @@ void addLeafToSmallestNode(struct OctTree* tree, leaf_idx_t leaf_idx, node_idx_t
 
 //region center of mass
 
+void calc_node_center_of_mass_serial(struct OctTree* tree, node_idx_t idx) {
+    if(getNode(tree, idx)->contentType == CT_NODES) {
+        node_idx_t children_start = get_node_children(idx);
+        for(int i = 0; i < NODE_CHILD_COUNT; i++) {
+            calc_node_center_of_mass(tree, children_start+i);
+        }
+    }
+    calc_node_center_of_mass(tree, idx);
+}
+
 void calc_node_center_of_mass(struct OctTree* tree, node_idx_t idx) {
     if(getNode(tree, idx)->contentType == CT_EMPTY) return;
 
@@ -354,8 +364,6 @@ void calc_node_center_of_mass(struct OctTree* tree, node_idx_t idx) {
 
         node_idx_t children_start = get_node_children(idx);
         for(int i = 0; i < NODE_CHILD_COUNT; i++) {
-//            calc_node_center_of_mass(tree, children_start+i);
-
             getNode(tree, idx)->centerOfMass.x += (getNode(tree, children_start+i)->centerOfMass.x * (float) getNode(tree, children_start+i)->size) / (float) getNode(tree, idx)->size;
             getNode(tree, idx)->centerOfMass.y += (getNode(tree, children_start+i)->centerOfMass.y * (float) getNode(tree, children_start+i)->size) / (float) getNode(tree, idx)->size;
             getNode(tree, idx)->centerOfMass.z += (getNode(tree, children_start+i)->centerOfMass.z * (float) getNode(tree, children_start+i)->size) / (float) getNode(tree, idx)->size;
@@ -581,11 +589,11 @@ void calc_force(struct OctTree* tree) {
 }
 
 void apply_force(struct OctTree* tree) {
-    walk_leaves(tree, apply_force_on_leaf);
+    walk_leaves_serial(tree, apply_force_on_leaf);
 }
 
 void apply_velocity(struct OctTree* tree) {
-    walk_leaves(tree, apply_velocity_on_leaf);
+    walk_leaves_serial(tree, apply_velocity_on_leaf);
 }
 
 void rebalance(struct OctTree* tree) {
@@ -631,8 +639,10 @@ void walk_leaves(struct OctTree* tree, void (*process_leaf)(struct OctTree* tree
 
     for(uint8_t thread_id = 0; thread_id < THREAD_COUNT; thread_id++)
         pthread_join(threads[thread_id], NULL);
+}
 
-//    for(leaf_idx_t i = 0; i < tree->leaf_count; i++) {
-//        process_leaf(tree, &tree->leaves[i]);
-//    }
+void walk_leaves_serial(struct OctTree* tree, void (*process_leaf)(struct OctTree* tree, struct Leaf* leaf)) {
+    for(leaf_idx_t i = 0; i < tree->leaf_count; i++) {
+        process_leaf(tree, &tree->leaves[i]);
+    }
 }

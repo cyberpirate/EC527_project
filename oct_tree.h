@@ -106,6 +106,8 @@ void rebalance(struct OctTree* tree);
  */
 void walk_leaves(struct OctTree* tree, void (*process_leaf)(struct OctTree* tree, struct Leaf* leaf));
 
+void walk_leaves_serial(struct OctTree* tree, void (*process_leaf)(struct OctTree* tree, struct Leaf* leaf));
+
 //region private functions
 
 struct Extents {
@@ -137,6 +139,7 @@ child_pos_idx_t get_pos_index(struct Extents* ext, Pos* pos);
 bool addLeafToNode(struct OctTree* tree, leaf_idx_t leaf_idx, node_idx_t idx, struct Extents* ext);
 Pos rand_inside(struct Extents* ext);
 void addLeafToSmallestNode(struct OctTree* tree, leaf_idx_t leaf_idx, node_idx_t idx, struct Extents* ext);
+void calc_node_center_of_mass_serial(struct OctTree* tree, node_idx_t idx);
 void calc_node_center_of_mass(struct OctTree* tree, node_idx_t idx);
 bool calc_force_for_node(struct OctTree* tree, node_idx_t idx, struct Extents* ext, void* callback_arg);
 void calc_force_on_leaf(struct OctTree* tree, struct Leaf* leaf);
