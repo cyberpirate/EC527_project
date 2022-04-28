@@ -589,11 +589,11 @@ void calc_force(struct OctTree* tree) {
 }
 
 void apply_force(struct OctTree* tree) {
-    walk_leaves_serial(tree, apply_force_on_leaf);
+    walk_leaves(tree, apply_force_on_leaf);
 }
 
 void apply_velocity(struct OctTree* tree) {
-    walk_leaves_serial(tree, apply_velocity_on_leaf);
+    walk_leaves(tree, apply_velocity_on_leaf);
 }
 
 void rebalance(struct OctTree* tree) {

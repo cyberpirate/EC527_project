@@ -72,7 +72,6 @@ int main(int argc, char *argv[])
         clock_gettime(CLOCK_REALTIME, &time_start);
 
         measure(calc_center_of_mass_profile, calc_center_of_mass(tree), ITERS);
-        measure(calc_center_of_mass_profile, calc_center_of_mass(tree), ITERS);
         measure(calc_force_profile, calc_force(tree), ITERS);
         measure(apply_force_profile, apply_force(tree), ITERS);
         measure(apply_velocity_profile, apply_velocity(tree), ITERS);
