@@ -99,6 +99,15 @@ uint8_t clamp_coord_to_universe(coord_t* v);
  */
 void clamp_to_universe(Pos* pos, Velocity* vel);
 
+coord_t dot_product(struct Vec* v1, struct Vec* v2);
+
+/**
+ * return projection of v onto u
+ * @param v
+ * @param u
+ */
+struct Vec project(struct Vec* v, struct Vec* u);
+
 double interval(struct timespec start, struct timespec end);
 
 #endif //EC527_PROJECT_UTILS_H

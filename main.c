@@ -25,7 +25,7 @@ void set_leaf_pos(struct OctTree* tree, struct Leaf* leaf) {
 //    leaf->pos = rand_pos();
     leaf->pos = rand_torus(TORUS_OUTER, TORUS_INNER);
     leaf->velocity = vel_from_pos(&leaf->pos);
-    mult_scalar(&leaf->velocity, TORUS_VEL/UNIVERSE_SIZE);
+    mult_scalar(&leaf->velocity, ((double) TORUS_VEL)/((double) UNIVERSE_SIZE));
 }
 
 int main(int argc, char *argv[])

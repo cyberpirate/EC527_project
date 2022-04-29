@@ -73,15 +73,44 @@ uint8_t clamp_coord_to_universe(coord_t* v) {
 }
 
 void clamp_to_universe(Pos* pos, Velocity* vel) {
-    if(clamp_coord_to_universe(&pos->x)) {
-        vel->x *= 0;
+//    if(clamp_coord_to_universe(&pos->x)) {
+//        vel->x *= -1;
+//    }
+//    if(clamp_coord_to_universe(&pos->y)) {
+//        vel->y *= -1;
+//    }
+//    if(clamp_coord_to_universe(&pos->z)) {
+//        vel->z *= -1;
+//    }
+    if(vec_len(pos) > 100) {
+//        mult_scalar(vel, -1);
+
+//        struct Vec v = project(vel, pos);
+//        mult_scalar(&v, -1);
+//        add(vel, &v);
+        set(vel, 0);
+
+        mult_scalar(pos, 100/vec_len(pos));
     }
-    if(clamp_coord_to_universe(&pos->y)) {
-        vel->y *= 0;
-    }
-    if(clamp_coord_to_universe(&pos->z)) {
-        vel->z *= 0;
-    }
+}
+
+coord_t dot_product(struct Vec* v1, struct Vec* v2) {
+    return
+        v1->x*v2->x +
+        v1->y*v2->y +
+        v1->z*v2->z;
+}
+
+struct Vec project(struct Vec* v, struct Vec* u) {
+    struct Vec ret = *u;
+
+    coord_t lhs = dot_product(v, u);
+    lhs /= vec_len(u);
+    lhs /= vec_len(u);
+
+    mult_scalar(&ret, lhs);
+
+    return ret;
 }
 
 double interval(struct timespec start, struct timespec end)
