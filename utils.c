@@ -95,3 +95,16 @@ double interval(struct timespec start, struct timespec end)
     }
     return (((double)temp.tv_sec) + ((double)temp.tv_nsec)*1.0e-9);
 }
+
+void printTimeLeft(double timePassed, int i) {
+    int iLeft = ITERS - i;
+    double timeLeft = (timePassed / i)*iLeft;
+
+    if(timeLeft > 60*60) {
+        printf(" -- %.2f hours", timeLeft/(60*60));
+    } else if(timeLeft > 60) {
+        printf(" -- %.2f minutes", timeLeft/(60));
+    } else {
+        printf(" -- %.2f seconds", timeLeft);
+    }
+}

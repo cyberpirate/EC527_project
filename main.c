@@ -87,6 +87,7 @@ int main(int argc, char *argv[])
 #ifdef PRINT_CALCULATING
         if((i % 10) == 0) {
             printf("\rcalculating: %.2f%%", (((float) i * 100) / ITERS));
+            printTimeLeft(interval(tot_time_start, time_stop), i);
             fflush(stdout);
         }
 #endif

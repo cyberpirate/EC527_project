@@ -101,4 +101,6 @@ void clamp_to_universe(Pos* pos, Velocity* vel);
 
 double interval(struct timespec start, struct timespec end);
 
+void printTimeLeft(double timePast, int i);
+
 #endif //EC527_PROJECT_UTILS_H
