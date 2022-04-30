@@ -110,11 +110,11 @@ int main(int argc, char *argv[])
     printf("total time: %.2f\n", totalTime);
     printf("over  time: %.2f\n", totalTime - time);
 
-    print_profile(calc_center_of_mass_profile);
-    print_profile(calc_force_profile);
-    print_profile(apply_force_profile);
-    print_profile(apply_velocity_profile);
-    print_profile(rebalance_profile);
+    print_profile(calc_center_of_mass_profile, ITERS);
+    print_profile(calc_force_profile, ITERS);
+    print_profile(apply_force_profile, ITERS);
+    print_profile(apply_velocity_profile, ITERS);
+    print_profile(rebalance_profile, ITERS);
 
     return 0;
 }

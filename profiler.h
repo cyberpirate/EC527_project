@@ -17,7 +17,7 @@
     profile += interval(prof_start, prof_stop) / iters; \
 }
 
-#define print_profile(profile) printf(#profile ": %f\n", profile)
+#define print_profile(profile, iters) printf(#profile ": %f - %f\n", profile, profile*iters)
 
 #else
 
@@ -25,7 +25,7 @@
 
 #define measure(profile, line, iters) line
 
-#define print_profile(profile) {}
+#define print_profile(profile, iters) {}
 
 #endif
 
