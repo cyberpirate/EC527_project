@@ -392,19 +392,35 @@ void calc_force_on_leaf(struct OctTree* tree, struct Leaf* leaf) {
 //endregion calc force on node
 
 //region apply force
-void apply_force_on_leaf(struct OctTree* tree, struct Leaf* leaf) {
+// i dont know if this is right way to kernalize this function
+__global__ void apply_force_on_leaf(struct OctTree tree, struct Leaf* leaf) {
+    *leaf->force = blockDim.x * blockIdx.x + threadIdx.x;
+    *leaf->velocity = blockDim.y * blockIdx.y + threadIdx.y;
     mult_scalar(&leaf->force, FORCE_MULT);
     add(&leaf->velocity, &leaf->force);
 }
+
+// void apply_force_on_leaf(struct OctTree* tree, struct Leaf* leaf) {
+//     mult_scalar(&leaf->force, FORCE_MULT);
+//     add(&leaf->velocity, &leaf->force);
+// }
 //endregion apply force
 
-//region apply velocity
-void apply_velocity_on_leaf(struct OctTree* tree, struct Leaf* leaf) {
-    Velocity v = leaf->velocity;
+__global__ void apply_velocity_on_leaf(struct OctTree tree, struct Leaf* leaf) {
+    *leaf->velocity = blockDim.x * blockIdx.x + threadIdx.x;
+    *leaf->pos = blockDim.y * blockIdx.y + threadIdx.y;
+    Velocity *v = leaf->velocity;
     mult_scalar(&v, VELOCITY_MULT);
     add(&leaf->pos, &v);
     clamp_to_universe(&leaf->pos, &leaf->velocity);
 }
+//region apply velocity
+// void apply_velocity_on_leaf(struct OctTree* tree, struct Leaf* leaf) {
+//     Velocity v = leaf->velocity;
+//     mult_scalar(&v, VELOCITY_MULT);
+//     add(&leaf->pos, &v);
+//     clamp_to_universe(&leaf->pos, &leaf->velocity);
+// }
 //endregion apply velocity
 
 //region rebalance
@@ -435,11 +451,20 @@ bool rebalance_node(struct OctTree* tree, node_idx_t idx, struct Extents* ext, v
 
 ////// PUBLIC SECTION ////
 
+// within these, allocate and destroy GPU memory
 struct OctTree* create_tree(leaf_idx_t leaf_count) {
-    struct OctTree* tree = (struct OctTree*) malloc(sizeof(struct OctTree));
+    CUDA_SAFE_CALL(cudaSetDevice(0));
+    leaf_idx_t allocSizeTree = sizeof(struct OctTree);
+    leaf_idx_t allocSizeLeaf = sizeof(struct Leaf);
+    struct OctTree* tree;
+    
+    // struct OctTree* tree = (struct OctTree*) malloc(sizeof(struct OctTree));
+    CUDA_SAFE_CALL(cudaMalloc((void **)&tree, allocSizeTree));
 
-    tree->leaves = calloc(leaf_count, sizeof(struct Leaf));
-    memset(tree->leaves, 0, leaf_count*sizeof(struct Leaf));
+    // tree->leaves = calloc(leaf_count, sizeof(struct Leaf));
+    // memset(tree->leaves, 0, leaf_count*sizeof(struct Leaf));
+    CUDA_SAFE_CALL(cudaMalloc((void **)&tree->leaves, leaf_count * allocSizeLeaf));
+
     tree->leaf_count = leaf_count;
 
     tree->depth = nullptr;
@@ -450,12 +475,19 @@ struct OctTree* create_tree(leaf_idx_t leaf_count) {
 }
 
 void destroy_tree(struct OctTree* tree) {
-    free(tree->leaves);
+    // free(tree->leaves);
+    CUDA_SAFE_CALL(cudaFree(tree->leaves));
+    
     for(depth_t i = 0; i < tree->depth_count; i++) {
         free(tree->depth[i]);
     }
+
     free(tree->depth);
-    free(tree);
+
+    CUDA_SAFE_CALL(cudaFree(tree->depth));
+    
+    // free(tree);
+    CUDA_SAFE_CALL(cudaFree(tree));
 }
 
 void add_leaves_to_tree(struct OctTree* tree) {
@@ -480,21 +512,11 @@ void calc_center_of_mass(struct OctTree* tree) {
 
 __global__ void walk_leaves_global(struct OctTree* tree, void (*process_leaf)(struct OctTree* tree, struct Leaf* leaf)) {
     leaf_idx_t i_start = blockDim.x * blockIdx.x + threadIdx.x;
-    leaf_idx_t i;
-    for(i = i_start; i < tree->leaf_count; i++) {
-        process_leaf(tree, &tree->leaves[i]);
-    }
+    process_leaf(tree, &tree->leaves[i_start]);
 }
 
 void calc_force(struct OctTree* tree) {
     // walk_leaves(tree, calc_force_on_leaf);
-    
-    // Select GPU
-    CUDA_SAFE_CALL(cudaSetDevice(0));
-
-    // Allocate GPU memory
-    size_t allocSize = tree->leaf_count * sizeof(size_t);
-    CUDA_SAFE_CALL(cudaMalloc((void **)&tree, allocSize));
 
     // Launch kernel
     dim3 dimGrid(64, 64);
@@ -507,18 +529,14 @@ void calc_force(struct OctTree* tree) {
 
 void apply_force(struct OctTree* tree) {
     // walk_leaves(tree, apply_force_on_leaf);
-    
-    // Select GPU
-    CUDA_SAFE_CALL(cudaSetDevice(0));
 
-    // Allocate GPU memory
-    size_t allocSize = tree->leaf_count * sizeof(size_t);
-    CUDA_SAFE_CALL(cudaMalloc((void **)&tree, allocSize));
+    // apply force on leaf is kernel. must change pointers to take leaf array. calculate index. copy vector functions into device functions
+    // separate function into GPU, do the functions, and recopy memory back into host
     
     // Launch kernel
     dim3 dimGrid(64, 64);
     dim3 dimBlock(16, 16);
-    walk_leaves_global<<<dimGrid, dimBlock>>>(tree, apply_force_on_leaf);
+    walk_leaves_global<<<dimGrid, dimBlock>>>(tree, apply_force_on_leaf<<<dimGrid, dimBlock>>>(tree, tree->leaves)); // copy memory into GPU
     
     // Check for launch errors
     CUDA_SAFE_CALL(cudaPeekAtLastError());
@@ -527,17 +545,10 @@ void apply_force(struct OctTree* tree) {
 void apply_velocity(struct OctTree* tree) {
     // walk_leaves(tree, apply_velocity_on_leaf);
     
-    // Select GPU
-    CUDA_SAFE_CALL(cudaSetDevice(0));
-
-    // Allocate GPU memory
-    size_t allocSize = tree->leaf_count * sizeof(size_t);
-    CUDA_SAFE_CALL(cudaMalloc((void **)&tree, allocSize));
-    
     // Launch kernel
     dim3 dimGrid(64, 64);
     dim3 dimBlock(16, 16);
-    walk_leaves_global<<<dimGrid, dimBlock>>>(tree, apply_velocity_on_leaf);
+    walk_leaves_global<<<dimGrid, dimBlock>>>(tree, apply_velocity_on_leaf<<<dimGrid, dimBlock>>>(tree, tree->leaves)); // pass GPU memory leaves directly
     
     // Check for launch errors
     CUDA_SAFE_CALL(cudaPeekAtLastError());
@@ -546,10 +557,4 @@ void apply_velocity(struct OctTree* tree) {
 void rebalance(struct OctTree* tree) {
     struct Extents ext = get_max_extents();
     walk_tree(tree, 0, &ext, rebalance_node, nullptr);
-}
-
-void walk_leaves(struct OctTree* tree, void (*process_leaf)(struct OctTree* tree, struct Leaf* leaf)) {
-    for(leaf_idx_t i = 0; i < tree->leaf_count; i++) {
-        process_leaf(tree, &tree->leaves[i]);
-    }
 }
