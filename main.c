@@ -39,10 +39,6 @@ int main(int argc, char *argv[])
     init_profile(rebalance_profile);
 
     struct OctTree* tree = create_tree(POINT_COUNT);
-    double times[ITERS];
-    struct timespec time_start, time_stop;
-    struct timespec tot_time_start, tot_time_stop;
-    clock_gettime(CLOCK_REALTIME, &tot_time_start);
 
     outputFile = fopen("output.csv", "w");
 
@@ -63,6 +59,11 @@ int main(int argc, char *argv[])
 //    fprintf(outputFile, "\n");
 //    return 0;
     add_leaves_to_tree(tree);
+
+    double times[ITERS];
+    struct timespec time_start, time_stop;
+    struct timespec tot_time_start, tot_time_stop;
+    clock_gettime(CLOCK_REALTIME, &tot_time_start);
 
 
 #ifdef PRINT_CALCULATING
