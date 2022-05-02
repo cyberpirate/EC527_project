@@ -66,6 +66,8 @@ int main(int argc, char *argv[])
 
 
 #ifdef PRINT_CALCULATING
+    struct timespec calc_start;
+    clock_gettime(CLOCK_REALTIME, &calc_start);
     printf("calculating: 0%%");
 #endif
     for(int i = 0; i < ITERS; i++) {
@@ -87,7 +89,7 @@ int main(int argc, char *argv[])
 #ifdef PRINT_CALCULATING
         if((i % 10) == 0) {
             printf("\rcalculating: %.2f%%", (((float) i * 100) / ITERS));
-            printTimeLeft(interval(tot_time_start, time_stop), i);
+            printTimeLeft(interval(calc_start, time_stop), i);
             fflush(stdout);
         }
 #endif
