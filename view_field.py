@@ -13,7 +13,7 @@ if len(lines) == 0:
 
 lines = lines[1:]
 
-lines = filter(lambda x: len(x) > 1000, lines)
+lines = filter(lambda x: len(x) > 0, lines)
 lines = map(lambda x: x.split(","), lines)
 lines = map(lambda x: x[1:], lines)
 lines = map(lambda x: list(map(float, x)), lines)

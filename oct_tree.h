@@ -141,7 +141,7 @@ Pos rand_inside(struct Extents* ext);
 void addLeafToSmallestNode(struct OctTree* tree, leaf_idx_t leaf_idx, node_idx_t idx, struct Extents* ext);
 void calc_node_center_of_mass_serial(struct OctTree* tree, node_idx_t idx);
 void calc_node_center_of_mass(struct OctTree* tree, node_idx_t idx);
-bool calc_force_for_node(struct OctTree* tree, node_idx_t idx, struct Extents* ext, void* callback_arg);
+bool calc_force_for_node(struct OctTree* tree, node_idx_t idx, coord_t width, void* callback_arg);
 void calc_force_on_leaf(struct OctTree* tree, struct Leaf* leaf);
 void apply_force_on_leaf(struct OctTree* tree, struct Leaf* leaf);
 void apply_velocity_on_leaf(struct OctTree* tree, struct Leaf* leaf);

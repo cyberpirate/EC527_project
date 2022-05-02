@@ -69,7 +69,7 @@ uint8_t clamp(coord_t min, coord_t* v, coord_t max) {
 }
 
 uint8_t clamp_coord_to_universe(coord_t* v) {
-    return clamp(-UNIVERSE_SIZE, v, UNIVERSE_SIZE);
+    return clamp(-UNIVERSE_SIZE + UNIVERSE_CLAMP_MOD, v, UNIVERSE_SIZE - UNIVERSE_CLAMP_MOD);
 }
 
 void clamp_to_universe(Pos* pos, Velocity* vel) {

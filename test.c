@@ -315,8 +315,8 @@ GREATEST_MAIN_DEFS();
 int main(int argc, char **argv) {
     GREATEST_MAIN_BEGIN();      /* command-line arguments, initialization. */
 
-//    RUN_TEST(node_util_function_tests);
-//    RUN_TEST(oct_tree_test);
+    RUN_TEST(node_util_function_tests);
+    RUN_TEST(oct_tree_test);
     RUN_TEST(scatter_test);
 
 //    RUN_TEST(rand_pos_test);

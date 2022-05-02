@@ -8,10 +8,11 @@
 typedef double coord_t;
 
 #define UNIVERSE_SIZE 100
+#define UNIVERSE_CLAMP_MOD 0.001
 #define SD_THRESHOLD 0.5
 #define RAND_SEED 506
 #define POINT_COUNT 100000
-#define ITERS 100
+#define ITERS 500
 #define FORCE_MULT 1
 #define VELOCITY_MULT 1
 #define SAME_POS_TOL 0.1
@@ -21,8 +22,9 @@ typedef double coord_t;
 #define MAX_SCATTER 1
 #define TORUS_OUTER 75
 #define TORUS_INNER 25
-#define TORUS_VEL 0.25
+#define TORUS_VEL 1
 #define THREAD_COUNT 16
+#define DEPTH_TO_PROC_SIZE 5000
 
 #define G (6.67E-11*1E8)
 #define nullptr 0

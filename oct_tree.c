@@ -4,6 +4,7 @@
 
 #include "oct_tree.h"
 #include "rand_gen.h"
+#include "params.h"
 #include <malloc.h>
 #include <math.h>
 #include <string.h>
@@ -25,12 +26,16 @@ struct OctNode* getNode(struct OctTree* tree, node_idx_t node_idx) {
     return &tree->depth[depth_idx][node_idx_in_depth];
 }
 
-node_idx_t depth_size(depth_t depth) {
-    node_idx_t idx = 1;
-    for(depth_t i = 0; i < depth; i++) {
-        idx *= NODE_CHILD_COUNT;
+uint32_t ipow(uint32_t base, uint32_t exp) {
+    uint32_t ret = 1;
+    for(uint32_t i = 0; i < exp; i++) {
+        ret *= base;
     }
-    return idx;
+    return ret;
+}
+
+node_idx_t depth_size(depth_t depth) {
+    return ipow(NODE_CHILD_COUNT, depth);
 }
 
 node_idx_t array_size_for_depth(depth_t depth) {
@@ -61,6 +66,7 @@ node_idx_t get_node_children(node_idx_t idx) {
 }
 
 node_idx_t get_node_parent(node_idx_t idx) {
+    dbgAssert(idx != 0);
     depth_t depth = get_depth_for_idx(idx);
     node_idx_t pos = (idx - idx_start_for_depth(depth)) / NODE_CHILD_COUNT;
     return idx_start_for_depth(depth-1) + pos;
@@ -104,6 +110,40 @@ void walk_tree(struct OctTree* tree, node_idx_t idx, struct Extents* ext, bool (
             walk_tree(tree, child_idx, &childExt, process_callback, callback_arg);
         }
     }
+}
+
+void walk_tree_breadth(struct OctTree* tree, bool (*process_callback)(struct OctTree* tree, node_idx_t idx, coord_t depth_width, void* callbackArg), void* callback_arg) {
+
+    if(!process_callback(tree, 0, UNIVERSE_SIZE*2, callback_arg)) return;
+    if(getNode(tree, 0)->contentType != CT_NODES) return;
+
+    uint32_t toProcessSize = DEPTH_TO_PROC_SIZE;
+    node_idx_t* toProces = malloc(DEPTH_TO_PROC_SIZE*sizeof(node_idx_t));
+    uint32_t processIdx = 0;
+    uint32_t processIdxLim = 1;
+
+    toProces[0] = get_node_children(0);
+
+    for(;processIdx < processIdxLim; processIdx++) {
+        node_idx_t nodeIdxBase = toProces[processIdx];
+        coord_t width = ipow(2, get_depth_for_idx(get_depth_for_idx(nodeIdxBase)));
+
+        for(int i = 0; i < NODE_CHILD_COUNT; i++) {
+            node_idx_t nodeIdx = nodeIdxBase + i;
+            if(getNode(tree, nodeIdx)->contentType == CT_EMPTY) continue;
+            if(process_callback(tree, nodeIdx, width, callback_arg)) {
+                if(getNode(tree, nodeIdx)->contentType != CT_NODES) continue;
+                toProces[processIdxLim] = get_node_children(nodeIdx);
+                processIdxLim++;
+                if(processIdxLim == toProcessSize) {
+                    toProcessSize += DEPTH_TO_PROC_SIZE;
+                    toProces = realloc(toProces, toProcessSize*sizeof(node_idx_t));
+                }
+            }
+        }
+    }
+
+    free(toProces);
 }
 
 //endregion idx tree traversal
@@ -448,10 +488,10 @@ void calc_depth_center_of_mass(struct OctTree* tree, depth_t depth) {
 //endregion center of mass
 
 //region calc force on node
-bool calc_force_for_node(struct OctTree* tree, node_idx_t idx, struct Extents* ext, void* callback_arg) {
+bool calc_force_for_node(struct OctTree* tree, node_idx_t idx, coord_t width, void* callback_arg) {
     struct Leaf* leaf = (struct Leaf*) callback_arg;
 
-    coord_t s = ext->maxExt.x - ext->minExt.x;
+    coord_t s = width;
     s = s > 0 ? s : -s;
 
     coord_t d = dist(&getNode(tree, idx)->centerOfMass, &leaf->pos);
@@ -486,8 +526,9 @@ bool calc_force_for_node(struct OctTree* tree, node_idx_t idx, struct Extents* e
 }
 
 void calc_force_on_leaf(struct OctTree* tree, struct Leaf* leaf) {
-    struct Extents rootExt = get_max_extents();
-    walk_tree(tree, 0, &rootExt, calc_force_for_node, leaf);
+    set(&leaf->force, 0);
+//    struct Extents rootExt = get_max_extents();
+    walk_tree_breadth(tree, calc_force_for_node, leaf);
 }
 //endregion calc force on node
 
