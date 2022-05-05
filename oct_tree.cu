@@ -99,7 +99,7 @@ void set_tree_depth(struct OctTree* tree, depth_t depth_count) {
     }
 
     for(depth_t i = old_depth; i < tree->depth_count; i++) {
-        CUDA_SAFE_CALL(cudaMalloc((void **)&tree->depth[i], depth_size(i)*sizeof(struct Leaf)));
+        CUDA_SAFE_CALL(cudaMalloc((void **)&tree->gpuDepth[i], depth_size(i)*sizeof(struct OctNode)));
         tree->depth[i] = (struct OctNode*) calloc(depth_size(i), sizeof(struct OctNode));
         memset(tree->depth[i], 0, depth_size(i) * sizeof(struct OctNode));
         dbgAssert(depth_size(i) * sizeof(struct OctNode*) <= malloc_usable_size(tree->depth[i]));
@@ -545,14 +545,32 @@ void calc_force_on_leaf(struct OctTree* tree, struct Leaf* leaf) {
 //endregion calc force on node
 
 //region apply force
-void apply_force_on_leaf(struct OctTree* tree, struct Leaf* leaf) {
+__global__ void apply_force_on_leaf(struct Leaf* leafArr, leaf_idx_t leaf_count) {
+    int idxInBlock = blockDim.x * threadIdx.y + threadIdx.x;
+    int blockSize = blockDim.x * blockDim.y;
+    int idxInGrid = gridDim.x * blockIdx.y + blockIdx.x;
+    int i = blockSize * idxInGrid + idxInBlock;
+
+    if(i >= leaf_count) return;
+
+    struct Leaf* leaf = &leafArr[i];
+
     mult_scalar(&leaf->force, FORCE_MULT);
     add(&leaf->velocity, &leaf->force);
 }
 //endregion apply force
 
 //region apply velocity
-void apply_velocity_on_leaf(struct OctTree* tree, struct Leaf* leaf) {
+__global__ void apply_velocity_on_leaf(struct Leaf* leafArr, leaf_idx_t leaf_count) {
+    int idxInBlock = blockDim.x * threadIdx.y + threadIdx.x;
+    int blockSize = blockDim.x * blockDim.y;
+    int idxInGrid = gridDim.x * blockIdx.y + blockIdx.x;
+    int i = blockSize * idxInGrid + idxInBlock;
+
+    if(i >= leaf_count) return;
+
+    struct Leaf* leaf = &leafArr[i];
+
     Velocity v = leaf->velocity;
     mult_scalar(&v, VELOCITY_MULT);
     add(&leaf->pos, &v);
@@ -618,6 +636,46 @@ void destroy_tree(struct OctTree* tree) {
     free(tree);
 }
 
+void copy_leaves_to_gpu(struct OctTree* tree) {
+    CUDA_SAFE_CALL(cudaMemcpy(
+        tree->gpuLeaves,
+        tree->leaves,
+        tree->leaf_count*sizeof(struct Leaf),
+        cudaMemcpyHostToDevice
+    ));
+}
+
+void copy_leaves_to_host(struct OctTree* tree) {
+    CUDA_SAFE_CALL(cudaMemcpy(
+        tree->leaves,
+        tree->gpuLeaves,
+        tree->leaf_count*sizeof(struct Leaf),
+        cudaMemcpyDeviceToHost
+    ));
+}
+
+void copy_nodes_to_gpu(struct OctTree* tree) {
+    for(int i = 0; i < tree->depth_count; i++) {
+        CUDA_SAFE_CALL(cudaMemcpy(
+            tree->gpuDepth[i],
+            tree->depth[i],
+            depth_size(i) * sizeof(struct OctNode),
+            cudaMemcpyHostToDevice
+        ));
+    }
+}
+
+void copy_nodes_to_host(struct OctTree* tree) {
+    for(int i = 0; i < tree->depth_count; i++) {
+        CUDA_SAFE_CALL(cudaMemcpy(
+            tree->depth[i],
+            tree->gpuDepth[i],
+            depth_size(i) * sizeof(struct OctNode),
+            cudaMemcpyDeviceToHost
+        ));
+    }
+}
+
 void add_leaves_to_tree(struct OctTree* tree) {
     for(leaf_idx_t i = 0; i < tree->leaf_count; i++) {
         addLeaf(tree, i);
@@ -647,11 +705,19 @@ void calc_force(struct OctTree* tree) {
 }
 
 void apply_force(struct OctTree* tree) {
-    walk_leaves(tree, apply_force_on_leaf);
+    // walk_leaves(tree, apply_force_on_leaf);
+    int numBlocks = (tree->leaf_count / (32*32)) + 1;
+    dim3 threadsPerBlock(32, 32);
+    apply_force_on_leaf<<<numBlocks, threadsPerBlock>>>(tree->gpuLeaves, tree->leaf_count);
+    cudaDeviceSynchronize();
 }
 
 void apply_velocity(struct OctTree* tree) {
-    walk_leaves(tree, apply_velocity_on_leaf);
+    // walk_leaves(tree, apply_velocity_on_leaf);
+    int numBlocks = (tree->leaf_count / (32*32)) + 1;
+    dim3 threadsPerBlock(32, 32);
+    apply_velocity_on_leaf<<<numBlocks, threadsPerBlock>>>(tree->gpuLeaves, tree->leaf_count);
+    cudaDeviceSynchronize();
 }
 
 void rebalance(struct OctTree* tree) {

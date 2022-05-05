@@ -2,16 +2,20 @@
 #include <stdio.h>
 #include <bits/time.h>
 #include <time.h>
-#include "params.h"
-#include "oct_tree.h"
-#include "rand_gen.h"
-#include "utils.h"
+#include "params.cuh"
+#include "oct_tree.cuh"
+#include "rand_gen.cuh"
+#include "utils.cuh"
 
 #ifdef DEBUG
 #define PROFILE
 #endif
 
-#include "profiler.h"
+#include "profiler.cuh"
+
+#include "oct_tree.cu"
+#include "rand_gen.cu"
+#include "utils.cu"
 
 #define PRINT_CALCULATING
 
@@ -34,8 +38,10 @@ int main(int argc, char *argv[])
 
     init_profile(calc_center_of_mass_profile);
     init_profile(calc_force_profile);
+    init_profile(copy_leaves_to_gpu_profile);
     init_profile(apply_force_profile);
     init_profile(apply_velocity_profile);
+    init_profile(copy_leaves_to_host_profile);
     init_profile(rebalance_profile);
 
     struct OctTree* tree = create_tree(POINT_COUNT);
@@ -76,8 +82,10 @@ int main(int argc, char *argv[])
 
         measure(calc_center_of_mass_profile, calc_center_of_mass(tree), ITERS);
         measure(calc_force_profile, calc_force(tree), ITERS);
+        measure(copy_leaves_to_gpu_profile, copy_leaves_to_gpu(tree), ITERS);
         measure(apply_force_profile, apply_force(tree), ITERS);
         measure(apply_velocity_profile, apply_velocity(tree), ITERS);
+        measure(copy_leaves_to_host_profile, copy_leaves_to_host(tree), ITERS);
         measure(rebalance_profile, rebalance(tree), ITERS);
 
         clock_gettime(CLOCK_REALTIME, &time_stop);
@@ -116,8 +124,10 @@ int main(int argc, char *argv[])
 
     print_profile(calc_center_of_mass_profile, ITERS);
     print_profile(calc_force_profile, ITERS);
+    print_profile(copy_leaves_to_gpu_profile, ITERS);
     print_profile(apply_force_profile, ITERS);
     print_profile(apply_velocity_profile, ITERS);
+    print_profile(copy_leaves_to_host_profile, ITERS);
     print_profile(rebalance_profile, ITERS);
 
     return 0;

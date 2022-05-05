@@ -59,6 +59,11 @@ struct OctTree* create_tree(leaf_idx_t leaf_count);
  */
 void destroy_tree(struct OctTree* tree);
 
+void copy_leaves_to_gpu(struct OctTree* tree);
+void copy_leaves_to_host(struct OctTree* tree);
+void copy_nodes_to_gpu(struct OctTree* tree);
+void copy_nodes_to_host(struct OctTree* tree);
+
 /**
  * Add leaves to tree after initialization
  */

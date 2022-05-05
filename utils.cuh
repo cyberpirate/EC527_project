@@ -25,28 +25,28 @@ typedef struct Vec Velocity;
  * @param vec
  * @param v
  */
-void set(struct Vec* vec, coord_t v);
+__host__ __device__ void set(struct Vec* vec, coord_t v);
 
 /**
  * Add v2 to v1
  * @param v1
  * @param v2
  */
-void add(struct Vec* v1, struct Vec* v2);
+__host__ __device__ void add(struct Vec* v1, struct Vec* v2);
 
 /**
  * Subtract v2 from v1
  * @param v1
  * @param v2
  */
-void sub(struct Vec* v1, struct Vec* v2);
+__host__ __device__ void sub(struct Vec* v1, struct Vec* v2);
 
 /**
  * Multiply vector by scalar
  * @param vec
  * @param v
  */
-void mult_scalar(struct Vec* vec, coord_t v);
+__host__ __device__ void mult_scalar(struct Vec* vec, coord_t v);
 
 /**
  * Calcuate dist between two points
@@ -54,20 +54,20 @@ void mult_scalar(struct Vec* vec, coord_t v);
  * @param p2
  * @return
  */
-coord_t dist(struct Vec* p1, struct Vec* p2);
+__host__ __device__ coord_t dist(struct Vec* p1, struct Vec* p2);
 
 /**
  * Get the length of a vector
  * @param pos
  * @return
  */
-coord_t vec_len(struct Vec* vec);
+__host__ __device__ coord_t vec_len(struct Vec* vec);
 
 /**
  * Normalize a vector
  * @param pos
  */
-void norm(struct Vec* vec);
+__host__ __device__ void norm(struct Vec* vec);
 
 /**
  * Return new normalized vector pointing from v1 to v2
@@ -75,7 +75,7 @@ void norm(struct Vec* vec);
  * @param v2
  * @return
  */
-struct Vec vec_dir(struct Vec* v1, struct Vec* v2);
+__host__ __device__ struct Vec vec_dir(struct Vec* v1, struct Vec* v2);
 
 /**
  * Clamp coord to specified range
@@ -84,20 +84,20 @@ struct Vec vec_dir(struct Vec* v1, struct Vec* v2);
  * @param max
  * @return
  */
-uint8_t clamp(coord_t min, coord_t* v, coord_t max);
+__host__ __device__ uint8_t clamp(coord_t min, coord_t* v, coord_t max);
 
 /**
  * Clamp coord to world size
  * @param v
  * @return true if clamped
  */
-uint8_t clamp_coord_to_universe(coord_t* v);
+__host__ __device__ uint8_t clamp_coord_to_universe(coord_t* v);
 
 /**
  * Clamp position to ensure it does not leave the world bounds
  * @param pos
  */
-void clamp_to_universe(Pos* pos, Velocity* vel);
+__host__ __device__ void clamp_to_universe(Pos* pos, Velocity* vel);
 
 double interval(struct timespec start, struct timespec end);
 

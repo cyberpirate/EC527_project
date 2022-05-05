@@ -6,6 +6,11 @@
 #include "oct_tree.cuh"
 #include "rand_gen.cuh"
 
+#include "oct_tree.cu"
+#include "rand_gen.cu"
+#include "utils.cu"
+
+
 //TEST rand_pos_test(void) {
 //
 //    reset_rand();
@@ -283,9 +288,14 @@ TEST oct_tree_test(void) {
 
     calc_center_of_mass(tree);
     calc_force(tree);
+    copy_leaves_to_gpu(tree);
     apply_force(tree);
     apply_velocity(tree);
+    copy_leaves_to_host(tree);
     rebalance(tree);
+    
+    copy_nodes_to_gpu(tree);
+    copy_nodes_to_host(tree);
 
     destroy_tree(tree);
     PASS();
