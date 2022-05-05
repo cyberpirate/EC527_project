@@ -5,7 +5,7 @@
 #ifndef EC527_PROJECT_UTILS_H
 #define EC527_PROJECT_UTILS_H
 
-#include "params.h"
+#include "params.cuh"
 #include <time.h>
 #include <stdint-gcc.h>
 

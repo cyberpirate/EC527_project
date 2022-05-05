@@ -5,6 +5,9 @@
 #ifndef EC527_PROJECT_PARAMS_H
 #define EC527_PROJECT_PARAMS_H
 
+#include <cstdio>
+#include <cstdlib>
+
 typedef double coord_t;
 
 #define UNIVERSE_SIZE 100
@@ -39,5 +42,17 @@ typedef double coord_t;
 #define dbgAssert(...) {}
 
 #endif
+
+// Assertion to check for errors
+#define CUDA_SAFE_CALL(ans) { gpuAssert((ans), (char *)__FILE__, __LINE__); }
+inline void gpuAssert(cudaError_t code, char *file, int line, bool abort=true)
+{
+  if (code != cudaSuccess)
+  {
+    fprintf(stderr, "CUDA_SAFE_CALL: %s %s %d\n",
+                                       cudaGetErrorString(code), file, line);
+    if (abort) exit(code);
+  }
+}
 
 #endif //EC527_PROJECT_PARAMS_H

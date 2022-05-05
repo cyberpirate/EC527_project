@@ -2,8 +2,8 @@
 // Created by cyberpirate on 3/30/22.
 //
 
-#include "rand_gen.h"
-#include "oct_tree.h"
+#include "rand_gen.cuh"
+#include "oct_tree.cuh"
 #include <stdlib.h>
 #include <math.h>
 

@@ -2,9 +2,9 @@
 // Created by cyberpirate on 3/30/22.
 //
 
-#include "oct_tree.h"
-#include "rand_gen.h"
-#include "params.h"
+#include "oct_tree.cuh"
+#include "rand_gen.cuh"
+#include "params.cuh"
 #include <malloc.h>
 #include <math.h>
 #include <string.h>
@@ -78,9 +78,14 @@ void set_tree_depth(struct OctTree* tree, depth_t depth_count) {
 
     depth_t old_depth = tree->depth_count;
     struct OctNode** old_depth_ptr = tree->depth;
+    struct OctNode** old_gpu_depth_ptr = tree->gpuDepth;
 
-    tree->depth = calloc(depth_count, sizeof(struct OctNode*));
+    tree->gpuDepth = (struct OctNode**) calloc(depth_count, sizeof(struct OctNode*));
+    tree->depth = (struct OctNode**) calloc(depth_count, sizeof(struct OctNode*));
+
     tree->depth_count = depth_count;
+
+    memset(tree->gpuDepth, 0, depth_count*sizeof(struct OctNode*));
     memset(tree->depth, 0, depth_count*sizeof(struct OctNode*));
 
     if(old_depth_ptr != nullptr) {
@@ -88,8 +93,14 @@ void set_tree_depth(struct OctTree* tree, depth_t depth_count) {
         free(old_depth_ptr);
     }
 
+    if(old_gpu_depth_ptr != nullptr) {
+        memcpy(tree->gpuDepth, old_gpu_depth_ptr, old_depth * sizeof(struct OctNode*));
+        free(old_gpu_depth_ptr);
+    }
+
     for(depth_t i = old_depth; i < tree->depth_count; i++) {
-        tree->depth[i] = calloc(depth_size(i), sizeof(struct OctNode));
+        CUDA_SAFE_CALL(cudaMalloc((void **)&tree->depth[i], depth_size(i)*sizeof(struct Leaf)));
+        tree->depth[i] = (struct OctNode*) calloc(depth_size(i), sizeof(struct OctNode));
         memset(tree->depth[i], 0, depth_size(i) * sizeof(struct OctNode));
         dbgAssert(depth_size(i) * sizeof(struct OctNode*) <= malloc_usable_size(tree->depth[i]));
     }
@@ -118,7 +129,7 @@ void walk_tree_breadth(struct OctTree* tree, bool (*process_callback)(struct Oct
     if(getNode(tree, 0)->contentType != CT_NODES) return;
 
     uint32_t toProcessSize = DEPTH_TO_PROC_SIZE;
-    node_idx_t* toProces = malloc(DEPTH_TO_PROC_SIZE*sizeof(node_idx_t));
+    node_idx_t* toProces = (node_idx_t*) malloc(DEPTH_TO_PROC_SIZE*sizeof(node_idx_t));
     uint32_t processIdx = 0;
     uint32_t processIdxLim = 1;
 
@@ -137,7 +148,7 @@ void walk_tree_breadth(struct OctTree* tree, bool (*process_callback)(struct Oct
                 processIdxLim++;
                 if(processIdxLim == toProcessSize) {
                     toProcessSize += DEPTH_TO_PROC_SIZE;
-                    toProces = realloc(toProces, toProcessSize*sizeof(node_idx_t));
+                    toProces = (node_idx_t*) realloc(toProces, toProcessSize*sizeof(node_idx_t));
                 }
             }
         }
@@ -307,6 +318,7 @@ bool addLeafToNode(struct OctTree* tree, leaf_idx_t leaf_idx, node_idx_t idx, st
     }
 
     dbgAssert(false);
+    return false;
 }
 
 Pos rand_inside(struct Extents* ext) {
@@ -581,10 +593,12 @@ struct OctTree* create_tree(leaf_idx_t leaf_count) {
 
     dbgAssert(leaf_count < (depth_size(DEPTH_LIMIT)*LEAF_CHILD_COUNT));
 
-    tree->leaves = calloc(leaf_count, sizeof(struct Leaf));
+    CUDA_SAFE_CALL(cudaMalloc((void **)&tree->gpuLeaves, leaf_count*sizeof(struct Leaf)));
+    tree->leaves = (Leaf*) calloc(leaf_count, sizeof(struct Leaf));
     memset(tree->leaves, 0, leaf_count*sizeof(struct Leaf));
     tree->leaf_count = leaf_count;
 
+    tree->gpuDepth = nullptr;
     tree->depth = nullptr;
     tree->depth_count = 0;
     set_tree_depth(tree, 1);
@@ -593,10 +607,13 @@ struct OctTree* create_tree(leaf_idx_t leaf_count) {
 }
 
 void destroy_tree(struct OctTree* tree) {
+    cudaFree(tree->gpuLeaves);
     free(tree->leaves);
     for(depth_t i = 0; i < tree->depth_count; i++) {
+        cudaFree(tree->gpuDepth[i]);
         free(tree->depth[i]);
     }
+    free(tree->gpuDepth);
     free(tree->depth);
     free(tree);
 }

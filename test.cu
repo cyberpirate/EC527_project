@@ -3,8 +3,8 @@
 //
 
 #include "greatest.h"
-#include "oct_tree.h"
-#include "rand_gen.h"
+#include "oct_tree.cuh"
+#include "rand_gen.cuh"
 
 //TEST rand_pos_test(void) {
 //
@@ -314,6 +314,16 @@ GREATEST_MAIN_DEFS();
 
 int main(int argc, char **argv) {
     GREATEST_MAIN_BEGIN();      /* command-line arguments, initialization. */
+
+    int runtimeVersion = 0;
+    int driverVersion = 0;
+
+    CUDA_SAFE_CALL(cudaDriverGetVersion(&driverVersion));
+    printf("driver version : %d\n", driverVersion);
+    CUDA_SAFE_CALL(cudaRuntimeGetVersion(&runtimeVersion));
+    printf("runtime version: %d\n", runtimeVersion);
+
+    CUDA_SAFE_CALL(cudaSetDevice(0));
 
     RUN_TEST(node_util_function_tests);
     RUN_TEST(oct_tree_test);

@@ -2,7 +2,7 @@
 // Created by cyberpirate on 4/6/22.
 //
 
-#include "utils.h"
+#include "utils.cuh"
 #include <math.h>
 #include <stdio.h>
 

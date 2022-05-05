@@ -6,8 +6,8 @@
 #define EC527_PROJECT_OCT_TREE_H
 
 #include <stdint-gcc.h>
-#include "params.h"
-#include "utils.h"
+#include "params.cuh"
+#include "utils.cuh"
 #include <stdbool.h>
 
 #define CT_EMPTY  0
@@ -35,12 +35,14 @@ struct OctNode {
 };
 
 struct OctTree {
+    struct Leaf* gpuLeaves;
     struct Leaf* leaves;
     leaf_idx_t leaf_count;
 
 //    struct OctNode* children;
 //    node_idx_t elmsCount;
 
+    struct OctNode** gpuDepth;
     struct OctNode** depth;
     depth_t depth_count;
 };

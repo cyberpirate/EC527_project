@@ -5,8 +5,8 @@
 #ifndef EC527_PROJECT_RAND_GEN_H
 #define EC527_PROJECT_RAND_GEN_H
 
-#include "params.h"
-#include "utils.h"
+#include "params.cuh"
+#include "utils.cuh"
 
 /**
  * Reset the random number generator with the starting seed

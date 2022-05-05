@@ -2,16 +2,17 @@
 clean:
 	-rm main test main_debug
 
-h_files = oct_tree.h rand_gen.h utils.h params.h profiler.h
-c_files = oct_tree.c rand_gen.c utils.c
+h_files = oct_tree.cuh rand_gen.cuh utils.cuh params.cuh profiler.cuh
+c_files = oct_tree.cu rand_gen.cu utils.cu
+gpu_options = -code sm_86 -arch compute_86
 
-main: $(h_files) $(c_files) main.c
-	gcc -lpthread -lm $(c_files) -std=gnu99 main.c -o main
+main: $(h_files) $(c_files) main.cu
+	nvcc -lpthread -lm $(c_files) main.cu -o main
 
-main_debug: $(h_files) $(c_files) main.c
-	gcc -lpthread -D DEBUG -ggdb -lm $(c_files) -std=gnu99 main.c -o main_debug
+main_debug: $(h_files) $(c_files) main.cu
+	nvcc -lpthread -D DEBUG -lm $(c_files) main.cu -o main_debug
 
-test: $(h_files) $(c_files) test.c greatest.h
-	gcc -lpthread -D DEBUG -ggdb -lm $(c_files) -std=gnu99 test.c greatest.h -o test
+test: $(h_files) $(c_files) test.cu greatest.h
+	nvcc -lpthread -D DEBUG -lm $(gpu_options) $(c_files) test.cu -o test
 
 all: main test main_debug
