@@ -287,8 +287,9 @@ TEST oct_tree_test(void) {
     ASSERT_EQ(leafNum, leafCount);
 
     calc_center_of_mass(tree);
-    calc_force(tree);
     copy_leaves_to_gpu(tree);
+    copy_nodes_to_gpu(tree);
+    calc_force(tree);
     apply_force(tree);
     apply_velocity(tree);
     copy_leaves_to_host(tree);

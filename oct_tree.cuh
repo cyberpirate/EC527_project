@@ -42,7 +42,7 @@ struct OctTree {
 //    struct OctNode* children;
 //    node_idx_t elmsCount;
 
-    struct OctNode** gpuDepth;
+    struct OctNode*  gpuNodes;
     struct OctNode** depth;
     depth_t depth_count;
 };
@@ -127,11 +127,11 @@ typedef uint8_t child_pos_idx_t;
 
 struct Leaf* getLeaf(struct OctTree* tree, node_idx_t node_idx, child_pos_idx_t leaf_idx);
 struct OctNode* getNode(struct OctTree* tree, node_idx_t node_idx);
-node_idx_t depth_size(depth_t depth);
-node_idx_t array_size_for_depth(depth_t depth);
-node_idx_t idx_start_for_depth(depth_t depth);
-depth_t get_depth_for_idx(node_idx_t idx);
-node_idx_t get_node_children(node_idx_t idx);
+__host__ __device__ node_idx_t depth_size(depth_t depth);
+__host__ __device__ node_idx_t array_size_for_depth(depth_t depth);
+__host__ __device__ node_idx_t idx_start_for_depth(depth_t depth);
+__host__ __device__ depth_t get_depth_for_idx(node_idx_t idx);
+__host__ __device__ node_idx_t get_node_children(node_idx_t idx);
 node_idx_t get_node_parent(node_idx_t idx);
 void set_tree_depth(struct OctTree* tree, depth_t depth_count);
 void setNodeEmpty(struct OctNode* node);

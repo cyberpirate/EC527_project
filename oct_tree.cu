@@ -26,7 +26,7 @@ struct OctNode* getNode(struct OctTree* tree, node_idx_t node_idx) {
     return &tree->depth[depth_idx][node_idx_in_depth];
 }
 
-uint32_t ipow(uint32_t base, uint32_t exp) {
+__host__ __device__ uint32_t ipow(uint32_t base, uint32_t exp) {
     uint32_t ret = 1;
     for(uint32_t i = 0; i < exp; i++) {
         ret *= base;
@@ -34,21 +34,24 @@ uint32_t ipow(uint32_t base, uint32_t exp) {
     return ret;
 }
 
-node_idx_t depth_size(depth_t depth) {
+__host__ __device__ node_idx_t depth_size(depth_t depth) {
     return ipow(NODE_CHILD_COUNT, depth);
 }
 
-node_idx_t array_size_for_depth(depth_t depth) {
-    if(depth == 0) return depth_size(depth);
-    return depth_size(depth) + array_size_for_depth(depth-1);
+__host__ __device__ node_idx_t array_size_for_depth(depth_t depth) {
+    node_idx_t ret = 0;
+    for(int i = 0; i <= depth; i++) {
+        ret += depth_size(i);
+    }
+    return ret;
 }
 
-node_idx_t idx_start_for_depth(depth_t depth) {
+__host__ __device__ node_idx_t idx_start_for_depth(depth_t depth) {
     if(depth == 0) return 0;
     return array_size_for_depth(depth-1);
 }
 
-depth_t get_depth_for_idx(node_idx_t idx) {
+__host__ __device__ depth_t get_depth_for_idx(node_idx_t idx) {
     depth_t depth = 1;
     node_idx_t nextIdx = idx_start_for_depth(depth);
     while(idx >= nextIdx) {
@@ -58,7 +61,7 @@ depth_t get_depth_for_idx(node_idx_t idx) {
     return depth-1;
 }
 
-node_idx_t get_node_children(node_idx_t idx) {
+__host__ __device__ node_idx_t get_node_children(node_idx_t idx) {
     depth_t depth = get_depth_for_idx(idx);
     node_idx_t depth_start = idx_start_for_depth(depth);
     node_idx_t next_depth_start = idx_start_for_depth(depth+1);
@@ -78,14 +81,16 @@ void set_tree_depth(struct OctTree* tree, depth_t depth_count) {
 
     depth_t old_depth = tree->depth_count;
     struct OctNode** old_depth_ptr = tree->depth;
-    struct OctNode** old_gpu_depth_ptr = tree->gpuDepth;
 
-    tree->gpuDepth = (struct OctNode**) calloc(depth_count, sizeof(struct OctNode*));
+    if(tree->gpuNodes != nullptr) {
+        CUDA_SAFE_CALL(cudaFree(tree->gpuNodes));
+    }
+
+    CUDA_SAFE_CALL(cudaMalloc((void **)&tree->gpuNodes, array_size_for_depth(depth_count-1)*sizeof(struct OctNode)));
     tree->depth = (struct OctNode**) calloc(depth_count, sizeof(struct OctNode*));
 
     tree->depth_count = depth_count;
 
-    memset(tree->gpuDepth, 0, depth_count*sizeof(struct OctNode*));
     memset(tree->depth, 0, depth_count*sizeof(struct OctNode*));
 
     if(old_depth_ptr != nullptr) {
@@ -93,13 +98,7 @@ void set_tree_depth(struct OctTree* tree, depth_t depth_count) {
         free(old_depth_ptr);
     }
 
-    if(old_gpu_depth_ptr != nullptr) {
-        memcpy(tree->gpuDepth, old_gpu_depth_ptr, old_depth * sizeof(struct OctNode*));
-        free(old_gpu_depth_ptr);
-    }
-
     for(depth_t i = old_depth; i < tree->depth_count; i++) {
-        CUDA_SAFE_CALL(cudaMalloc((void **)&tree->gpuDepth[i], depth_size(i)*sizeof(struct OctNode)));
         tree->depth[i] = (struct OctNode*) calloc(depth_size(i), sizeof(struct OctNode));
         memset(tree->depth[i], 0, depth_size(i) * sizeof(struct OctNode));
         dbgAssert(depth_size(i) * sizeof(struct OctNode*) <= malloc_usable_size(tree->depth[i]));
@@ -500,27 +499,28 @@ void calc_depth_center_of_mass(struct OctTree* tree, depth_t depth) {
 //endregion center of mass
 
 //region calc force on node
-bool calc_force_for_node(struct OctTree* tree, node_idx_t idx, coord_t width, void* callback_arg) {
-    struct Leaf* leaf = (struct Leaf*) callback_arg;
+// bool calc_force_for_node(struct OctTree* tree, node_idx_t idx, coord_t width, void* callback_arg) {
+//     struct Leaf* leaf = (struct Leaf*) callback_arg;
+__host__ __device__ bool calc_force_for_node(struct OctNode* node, struct Leaf* leafArr, struct Leaf* leaf, coord_t width) {
 
     coord_t s = width;
     s = s > 0 ? s : -s;
 
-    coord_t d = dist(&getNode(tree, idx)->centerOfMass, &leaf->pos);
+    coord_t d = dist(&node->centerOfMass, &leaf->pos);
 
     if(s/d < SD_THRESHOLD) { // node is far enough away
 
-        coord_t f = (G*(getNode(tree, idx)->size + 1))/(d*d);
-        Force fVec = vec_dir(&leaf->pos, &getNode(tree, idx)->centerOfMass);
+        coord_t f = (G*(node->size + 1))/(d*d);
+        Force fVec = vec_dir(&leaf->pos, &node->centerOfMass);
         mult_scalar(&fVec, f);
 
         add(&leaf->force, &fVec);
 
         return false;
     } else { // node is too close
-        if(getNode(tree, idx)->contentType == CT_LEAVES) {
-            for(leaf_idx_t i = 0; i < getNode(tree, idx)->size; i++) {
-                struct Leaf* otherLeaf = getLeaf(tree, idx, i);
+        if(node->contentType == CT_LEAVES) {
+            for(leaf_idx_t i = 0; i < node->size; i++) {
+                struct Leaf* otherLeaf = &leafArr[node->leaves[i]];
                 coord_t d = dist(&leaf->pos, &otherLeaf->pos);
                 if(d == 0) continue;
                 coord_t f = (G*2)/(d*d);
@@ -529,18 +529,64 @@ bool calc_force_for_node(struct OctTree* tree, node_idx_t idx, coord_t width, vo
 
                 add(&leaf->force, &fVec);
             }
-        } else {
+        } else if(node->contentType == CT_NODES) {
             return true;
         }
     }
 
-    return true;
+    return false;
 }
 
-void calc_force_on_leaf(struct OctTree* tree, struct Leaf* leaf) {
+__global__ void calc_force_on_leaf(struct Leaf* leafArr, leaf_idx_t leaf_count, struct OctNode* nodeArr) {
+    int idxInBlock = blockDim.x * threadIdx.y + threadIdx.x;
+    int blockSize = blockDim.x * blockDim.y;
+    int idxInGrid = gridDim.x * blockIdx.y + blockIdx.x;
+    int i = blockSize * idxInGrid + idxInBlock;
+
+    child_pos_idx_t posIdx[DEPTH_LIMIT];
+    node_idx_t depthStack[DEPTH_LIMIT];
+    node_idx_t depthStackPos = 0;
+    node_idx_t idx;
+
+    if(i >= leaf_count) return;
+
+    struct Leaf* leaf = &leafArr[i];
     set(&leaf->force, 0);
-//    struct Extents rootExt = get_max_extents();
-    walk_tree_breadth(tree, calc_force_for_node, leaf);
+
+    // calc_force_for_node(
+    //         0,
+    //         nodeArr,
+    //         leafArr,
+    //         leaf,
+    //         (UNIVERSE_SIZE*2.0)
+    // );
+
+    depthStack[0] = get_node_children(0);
+    posIdx[0] = 0;
+
+    while(true) {
+        if(posIdx[depthStackPos] == NODE_CHILD_COUNT) {
+            if(depthStackPos == 0) break;
+            depthStackPos--;
+            continue;
+        }
+
+        idx = depthStack[depthStackPos] + posIdx[depthStackPos];
+        bool processChildren = calc_force_for_node(
+            &nodeArr[idx],
+            leafArr,
+            leaf,
+            (UNIVERSE_SIZE*2.0) / ipow(2, depthStackPos+1)
+        );
+
+        posIdx[depthStackPos]++;
+
+        if(processChildren) {
+            depthStack[depthStackPos+1] = get_node_children(idx);
+            posIdx[depthStackPos+1] = 0;
+            depthStackPos++;
+        }
+    }
 }
 //endregion calc force on node
 
@@ -616,7 +662,7 @@ struct OctTree* create_tree(leaf_idx_t leaf_count) {
     memset(tree->leaves, 0, leaf_count*sizeof(struct Leaf));
     tree->leaf_count = leaf_count;
 
-    tree->gpuDepth = nullptr;
+    tree->gpuNodes = nullptr;
     tree->depth = nullptr;
     tree->depth_count = 0;
     set_tree_depth(tree, 1);
@@ -628,10 +674,9 @@ void destroy_tree(struct OctTree* tree) {
     cudaFree(tree->gpuLeaves);
     free(tree->leaves);
     for(depth_t i = 0; i < tree->depth_count; i++) {
-        cudaFree(tree->gpuDepth[i]);
         free(tree->depth[i]);
     }
-    free(tree->gpuDepth);
+    cudaFree(tree->gpuNodes);
     free(tree->depth);
     free(tree);
 }
@@ -657,7 +702,7 @@ void copy_leaves_to_host(struct OctTree* tree) {
 void copy_nodes_to_gpu(struct OctTree* tree) {
     for(int i = 0; i < tree->depth_count; i++) {
         CUDA_SAFE_CALL(cudaMemcpy(
-            tree->gpuDepth[i],
+            tree->gpuNodes + idx_start_for_depth(i),
             tree->depth[i],
             depth_size(i) * sizeof(struct OctNode),
             cudaMemcpyHostToDevice
@@ -669,7 +714,7 @@ void copy_nodes_to_host(struct OctTree* tree) {
     for(int i = 0; i < tree->depth_count; i++) {
         CUDA_SAFE_CALL(cudaMemcpy(
             tree->depth[i],
-            tree->gpuDepth[i],
+            tree->gpuNodes + idx_start_for_depth(i),
             depth_size(i) * sizeof(struct OctNode),
             cudaMemcpyDeviceToHost
         ));
@@ -701,7 +746,12 @@ void calc_center_of_mass(struct OctTree* tree) {
 }
 
 void calc_force(struct OctTree* tree) {
-    walk_leaves(tree, calc_force_on_leaf);
+    // walk_leaves(tree, calc_force_on_leaf);
+    int numBlocks = (tree->leaf_count / (32*32)) + 1;
+    dim3 threadsPerBlock(32, 32);
+    calc_force_on_leaf<<<numBlocks, threadsPerBlock>>>(tree->gpuLeaves, tree->leaf_count, tree->gpuNodes);
+    cudaDeviceSynchronize();
+    CUDA_SAFE_CALL(cudaPeekAtLastError());
 }
 
 void apply_force(struct OctTree* tree) {
@@ -710,6 +760,7 @@ void apply_force(struct OctTree* tree) {
     dim3 threadsPerBlock(32, 32);
     apply_force_on_leaf<<<numBlocks, threadsPerBlock>>>(tree->gpuLeaves, tree->leaf_count);
     cudaDeviceSynchronize();
+    CUDA_SAFE_CALL(cudaPeekAtLastError());
 }
 
 void apply_velocity(struct OctTree* tree) {
@@ -718,6 +769,7 @@ void apply_velocity(struct OctTree* tree) {
     dim3 threadsPerBlock(32, 32);
     apply_velocity_on_leaf<<<numBlocks, threadsPerBlock>>>(tree->gpuLeaves, tree->leaf_count);
     cudaDeviceSynchronize();
+    CUDA_SAFE_CALL(cudaPeekAtLastError());
 }
 
 void rebalance(struct OctTree* tree) {

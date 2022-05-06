@@ -2,7 +2,7 @@
 clean:
 	-rm main test main_debug
 
-h_files = oct_tree.cuh rand_gen.cuh utils.cuh params.cuh profiler.cuh
+h_files = oct_tree.cuh rand_gen.cuh utils.cuh params.cuh profiler.cuh oct_tree.cu rand_gen.cu utils.cu
 # c_files = oct_tree.cu rand_gen.cu utils.cu
 c_files = 
 gpu_options = -code sm_86 -arch compute_86
