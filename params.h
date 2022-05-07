@@ -23,7 +23,7 @@ typedef double coord_t;
 #define TORUS_OUTER 75
 #define TORUS_INNER 25
 #define TORUS_VEL 1
-#define THREAD_COUNT 16
+#define THREAD_COUNT 1
 #define DEPTH_TO_PROC_SIZE 5000
 
 #define G (6.67E-11*1E8)
