@@ -5,7 +5,7 @@ clean:
 h_files = oct_tree.cuh rand_gen.cuh utils.cuh params.cuh profiler.cuh oct_tree.cu rand_gen.cu utils.cu
 # c_files = oct_tree.cu rand_gen.cu utils.cu
 c_files = 
-gpu_options = -code sm_86 -arch compute_86
+gpu_options = -code sm_35 -arch compute_35
 
 main: $(h_files) $(c_files) main.cu
 	nvcc -lpthread -lm $(c_files) main.cu -o main
