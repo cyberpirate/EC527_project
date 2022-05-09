@@ -39,6 +39,7 @@ int main(int argc, char *argv[])
     init_profile(calc_center_of_mass_profile);
     init_profile(calc_force_profile);
     init_profile(copy_leaves_to_gpu_profile);
+    init_profile(copy_nodes_to_gpu_profile);
     init_profile(apply_force_profile);
     init_profile(apply_velocity_profile);
     init_profile(copy_leaves_to_host_profile);
@@ -81,8 +82,9 @@ int main(int argc, char *argv[])
         clock_gettime(CLOCK_REALTIME, &time_start);
 
         measure(calc_center_of_mass_profile, calc_center_of_mass(tree), ITERS);
-        measure(calc_force_profile, calc_force(tree), ITERS);
         measure(copy_leaves_to_gpu_profile, copy_leaves_to_gpu(tree), ITERS);
+        measure(copy_nodes_to_gpu_profile, copy_nodes_to_gpu(tree), ITERS);
+        measure(calc_force_profile, calc_force(tree), ITERS);
         measure(apply_force_profile, apply_force(tree), ITERS);
         measure(apply_velocity_profile, apply_velocity(tree), ITERS);
         measure(copy_leaves_to_host_profile, copy_leaves_to_host(tree), ITERS);
@@ -125,6 +127,7 @@ int main(int argc, char *argv[])
     print_profile(calc_center_of_mass_profile, ITERS);
     print_profile(calc_force_profile, ITERS);
     print_profile(copy_leaves_to_gpu_profile, ITERS);
+    print_profile(copy_nodes_to_gpu_profile, ITERS);
     print_profile(apply_force_profile, ITERS);
     print_profile(apply_velocity_profile, ITERS);
     print_profile(copy_leaves_to_host_profile, ITERS);
